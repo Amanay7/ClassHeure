@@ -307,7 +307,7 @@ fun StudentsScreen(viewModel: AppViewModel) {
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                var currentSubView by remember(activeClass) { mutableStateOf("liste") }
+                var currentSubView by remember(activeClass.id) { mutableStateOf("liste") }
 
                 // Search, filter, and sorting states for student lists
                 var searchQuery by remember { mutableStateOf("") }
@@ -321,17 +321,24 @@ fun StudentsScreen(viewModel: AppViewModel) {
                 var studentToChangePosition by remember { mutableStateOf<Pair<StudentEntity, Int>?>(null) }
                 var showExportClassListPdfDialog by remember { mutableStateOf(false) }
 
-                val presentAges = remember(students) {
-                    val computed = students.mapNotNull { calculateAge(it.birthDate) }
+                val agesByStudentId = remember(students) {
+                    students.associate { it.id to calculateAge(it.birthDate) }
+                }
+                val gradesByStudentId = remember(grades) {
+                    grades.associateBy { it.studentId }
+                }
+
+                val presentAges = remember(agesByStudentId) {
+                    val computed = agesByStudentId.values.filterNotNull()
                     val extraAges = listOf(18, 19, 20, 21, 22)
                     (computed + extraAges).distinct().sorted()
                 }
 
                 // Safe helper to compute the student's weighted average
                 val coeff = currentSettings?.subjectCoefficient ?: 3
-                val filteredStudents = remember(students, grades, searchQuery, selectedGenderFilter, selectedAgeFilter, selectedAverageFilter, selectedGradeFilter, selectedGroupFilter, selectedSortOption, coeff) {
+                val filteredStudents = remember(students, gradesByStudentId, agesByStudentId, searchQuery, selectedGenderFilter, selectedAgeFilter, selectedAverageFilter, selectedGradeFilter, selectedGroupFilter, selectedSortOption, coeff) {
                     val listWithInfo = students.map { student ->
-                        val studentGrade = grades.find { it.studentId == student.id }
+                        val studentGrade = gradesByStudentId[student.id]
                         val average = studentGrade?.let { sg ->
                             GradeCalculator.computeStudentAverage(sg, coeff)
                         }
@@ -363,7 +370,7 @@ fun StudentsScreen(viewModel: AppViewModel) {
                         val targetAge = selectedAgeFilter.toIntOrNull()
                         if (targetAge != null) {
                             result = result.filter { (student, _, _) ->
-                                calculateAge(student.birthDate) == targetAge
+                                agesByStudentId[student.id] == targetAge
                             }
                         }
                     }
@@ -434,501 +441,84 @@ fun StudentsScreen(viewModel: AppViewModel) {
                     students.map { it.groupName.trim() }.filter { it.isNotBlank() }.distinct().sorted()
                 }
 
-                if (currentSubView == "liste") {
-                    AdaptiveScreenContainer(maxWidth = 960.dp) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .statusBarsPadding()
-                                .navigationBarsPadding(),
-                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                        // Header of the full-screen dialog
-                        item {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    IconButton(
-                                        onClick = { activeClassForStudentsList = null },
-                                        modifier = Modifier.size(40.dp)
-                                    ) {
-                                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                    }
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    ClassColorDot(activeClass.id, activeClass.name, size = 14)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = activeClass.name,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (Tr.isArabic()) "(${students.size} تلميذ)" else "(${students.size} élèves)",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    IconButton(onClick = {
-                                        showExportClassListPdfDialog = true
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Default.PictureAsPdf,
-                                            contentDescription = if (Tr.isArabic()) "تصدير القائمة PDF" else "Exporter Liste PDF",
-                                            tint = MaterialTheme.colorScheme.tertiary
-                                        )
-                                    }
-                                    IconButton(onClick = { showAddStudentDialog = true }) {
-                                        Icon(
-                                            imageVector = Icons.Default.PersonAdd,
-                                            contentDescription = if (Tr.isArabic()) "إضافة تلميذ" else "Ajouter un élève",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                val safeClassNameForFile = remember(activeClass.name) {
+                    activeClass.name.trim().replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
+                }
 
-                        item {
-                            SingleChoiceSegmentedButtonRow(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                            ) {
-                                SegmentedButton(
-                                    selected = currentSubView == "liste",
-                                    onClick = { currentSubView = "liste" },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.FormatListNumbered, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(Tr.t("Liste"), fontSize = 11.sp, maxLines = 1)
-                                    }
-                                }
-                                SegmentedButton(
-                                    selected = currentSubView == "plan",
-                                    onClick = { currentSubView = "plan" },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(Tr.t("Plan"), fontSize = 11.sp, maxLines = 1)
-                                    }
-                                }
-                                SegmentedButton(
-                                    selected = currentSubView == "stats",
-                                    onClick = { currentSubView = "stats" },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(Tr.t("Stats"), fontSize = 11.sp, maxLines = 1)
-                                    }
-                                }
-                            }
-                        }
-
-                        // --- BARRE DE RECHERCHE ET BOUTON DE FILTRE ---
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                FineSearchBar(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    placeholder = if (Tr.isArabic()) "بحث عن تلميذ بالاسم أو اللقب..." else "Rechercher un élève...",
-                                    testTag = "search_student_field",
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                // Button to toggle advanced filter panel
-                                FilledIconButton(
-                                    onClick = { showFiltersPanel = !showFiltersPanel },
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = if (selectedGenderFilter != "Tous" || selectedAgeFilter != "Tous" || selectedAverageFilter != "Tous" || selectedGradeFilter != "Tous" || selectedSortOption != "Nom (A-Z)") {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.secondaryContainer
-                                        },
-                                        contentColor = if (selectedGenderFilter != "Tous" || selectedAgeFilter != "Tous" || selectedAverageFilter != "Tous" || selectedGradeFilter != "Tous" || selectedSortOption != "Nom (A-Z)") {
-                                            MaterialTheme.colorScheme.onPrimary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        }
-                                    ),
-                                    modifier = Modifier.size(38.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.FilterList,
-                                        contentDescription = if (Tr.isArabic()) "عوامل التصفية" else "Filtres",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        // --- PANNEAU DE FILTRAGE EXPANDABLE ---
-                        item {
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = showFiltersPanel,
-                                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
-                                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
-                            ) {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    // Filter Header
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = if (Tr.isArabic()) "تصفية وترتيب متقدم" else "Filtres avancés",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        TextButton(
-                                            onClick = {
-                                                selectedGenderFilter = "Tous"
-                                                selectedAgeFilter = "Tous"
-                                                selectedAverageFilter = "Tous"
-                                                selectedGradeFilter = "Tous"
-                                                selectedGroupFilter = "ALL"
-                                                selectedSortOption = "Nom (A-Z)"
-                                            }
-                                        ) {
-                                            Text(Tr.t("Réinitialiser"))
-                                        }
-                                    }
-
-                                    // 1. Filter by Gender
-                                    Column {
-                                        Text(Tr.t("Sexe"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            listOf("Tous", "M", "F").forEach { genderVal ->
-                                                val label = when (genderVal) {
-                                                    "M" -> Tr.t("Garçons ♂")
-                                                    "F" -> Tr.t("Filles ♀")
-                                                    else -> Tr.t("Tous")
-                                                }
-                                                FilterChip(
-                                                    selected = selectedGenderFilter == genderVal,
-                                                    onClick = { selectedGenderFilter = genderVal },
-                                                    label = { Text(label) }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // 2. Filter by Age (uniquement les âges renseignés dans la liste)
-                                    if (presentAges.isNotEmpty()) {
-                                        Column {
-                                            Text(Tr.t("Âge"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Row(
-                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                FilterChip(
-                                                    selected = selectedAgeFilter == "Tous",
-                                                    onClick = { selectedAgeFilter = "Tous" },
-                                                    label = { Text(Tr.t("Tous")) }
-                                                )
-                                                presentAges.forEach { age ->
-                                                    val ageStr = age.toString()
-                                                    val label = if (Tr.isArabic()) "$age سنة" else "$age ans"
-                                                    FilterChip(
-                                                        selected = selectedAgeFilter == ageStr,
-                                                        onClick = { selectedAgeFilter = ageStr },
-                                                        label = { Text(label) }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    // 3. Filter by Average
-                                    Column {
-                                        Text(Tr.t("Performance (Moyennes)"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row(
-                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            listOf("Tous", "Admis", "Non-admis", "Excellent", "Sans Moyenne").forEach { avgVal ->
-                                                val label = when (avgVal) {
-                                                    "Admis" -> Tr.t("Admis (≥ 10)")
-                                                    "Non-admis" -> Tr.t("Non-admis (< 10)")
-                                                    "Excellent" -> Tr.t("Excellent (≥ 16)")
-                                                    "Sans Moyenne" -> Tr.t("Non évalué")
-                                                    else -> Tr.t("Tous")
-                                                }
-                                                FilterChip(
-                                                    selected = selectedAverageFilter == avgVal,
-                                                    onClick = { selectedAverageFilter = avgVal },
-                                                    label = { Text(label) }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // 4. Filter by Missing/Specific Grades
-                                    Column {
-                                        Text(Tr.t("Évaluations et Notes"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row(
-                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            listOf("Tous", "MissingDevoir", "MissingFinal", "NoGrades").forEach { grdVal ->
-                                                val label = when (grdVal) {
-                                                    "MissingDevoir" -> Tr.t("Devoir manquant")
-                                                    "MissingFinal" -> Tr.t("Composition manquante")
-                                                    "NoGrades" -> Tr.t("Aucune note")
-                                                    else -> Tr.t("Tous")
-                                                }
-                                                FilterChip(
-                                                    selected = selectedGradeFilter == grdVal,
-                                                    onClick = { selectedGradeFilter = grdVal },
-                                                    label = { Text(label) }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // 5. Sorting
-                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(Tr.t("Trier par"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                        Row(
-                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            listOf("Ordre personnalisé (N°)", "Nom (A-Z)", "Nom (Z-A)", "Moyenne (+)", "Moyenne (-)", "Âge (Le plus jeune)", "Âge (Le plus âgé)").forEach { sortVal ->
-                                                FilterChip(
-                                                    selected = selectedSortOption == sortVal,
-                                                    onClick = { selectedSortOption = sortVal },
-                                                    label = { Text(Tr.t(sortVal)) }
-                                                )
-                                            }
-                                        }
-
-                                        if (selectedSortOption != "Ordre personnalisé (N°)" && filteredStudents.isNotEmpty()) {
-                                            FilledTonalButton(
-                                                onClick = {
-                                                    viewModel.reorderStudents(activeClass.id, filteredStudents.map { it.first })
-                                                    selectedSortOption = "Ordre personnalisé (N°)"
-                                                    Toast.makeText(context, if (isAr) "تم حفظ الترتيب بنجاح!" else "Classement sauvegardé avec succès !", Toast.LENGTH_SHORT).show()
-                                                },
-                                                shape = RoundedCornerShape(8.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                                modifier = Modifier.padding(top = 4.dp)
-                                            ) {
-                                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                Spacer(Modifier.width(6.dp))
-                                                Text(Tr.t("Enregistrer ce classement comme ordre officiel"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Group Quick Filter Row (if class has groups defined)
-                    if (classGroups.isNotEmpty()) {
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = if (isAr) "الفوج :" else "Groupe :",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                FilterChip(
-                                    selected = selectedGroupFilter == "ALL",
-                                    onClick = { selectedGroupFilter = "ALL" },
-                                    label = { Text("${if (isAr) "الكل" else "Tous"} (${students.size})") }
-                                )
-                                classGroups.forEach { grp ->
-                                    val grpCount = students.count { it.groupName.trim() == grp }
-                                    FilterChip(
-                                        selected = selectedGroupFilter == grp,
-                                        onClick = { selectedGroupFilter = grp },
-                                        label = { Text("${if (isAr) grp.replace("G", "ف").replace("g", "ف") else grp} ($grpCount)") }
-                                    )
-                                }
-                                val noGrpCount = students.count { it.groupName.trim().isBlank() }
-                                if (noGrpCount > 0) {
-                                    FilterChip(
-                                        selected = selectedGroupFilter == "NONE",
-                                        onClick = { selectedGroupFilter = "NONE" },
-                                        label = { Text("${if (isAr) "بدون فوج" else "Sans groupe"} ($noGrpCount)") }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (students.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 48.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            imageVector = Icons.Default.PeopleOutline,
-                                            contentDescription = "No students",
-                                            tint = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = if (Tr.isArabic()) "لا يوجد أي تلميذ في هذا الفوج.\nاضغط على '+' لإضافة تلميذ." else "Aucun élève dans cette classe.\nCliquez sur '+' pour en ajouter.",
-                                            textAlign = TextAlign.Center,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                }
-                            }
-                        } else if (filteredStudents.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 48.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            imageVector = Icons.Default.Search,
-                                            contentDescription = "No results",
-                                            tint = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = if (Tr.isArabic()) "لا يوجد أي تلميذ يطابق معايير البحث." else "Aucun élève ne correspond à vos critères de recherche.",
-                                            textAlign = TextAlign.Center,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            itemsIndexed(filteredStudents, key = { _, (student, _, _) -> student.id }) { index, (student, _, average) ->
-                                val studentOrderNum = if (student.orderIndex > 0) student.orderIndex else (index + 1)
-                                StudentNumberedItemCard(
-                                    number = studentOrderNum,
-                                    student = student,
-                                    average = null,
-                                    onClick = { studentToEdit = student },
-                                    onDelete = { studentToDelete = student },
-                                    onChangePosition = {
-                                        studentToChangePosition = Pair(student, studentOrderNum)
-                                    }
-                                )
-                            }
-                            item {
-                                Spacer(modifier = Modifier.height(36.dp))
-                            }
-                        }
-                    }
-                    }
-                } else if (currentSubView == "plan") {
-                    // Conteneur dédié pour le Plan de classe horizontal (vue globale & édition fluide)
+                AdaptiveScreenContainer(maxWidth = 960.dp) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .statusBarsPadding()
                             .navigationBarsPadding()
-                            .padding(12.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // En-tête de dialogue avec identification couleur de la classe
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        // En-tête fixe et unifié de la classe (navigation fluide sans recréation)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                            IconButton(
+                                onClick = { activeClassForStudentsList = null },
+                                modifier = Modifier.size(40.dp)
                             ) {
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            ClassColorDot(activeClass.id, activeClass.name, size = 14)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = activeClass.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (Tr.isArabic()) "(${students.size} تلميذ)" else "(${students.size} élèves)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            if (currentSubView == "liste") {
                                 IconButton(
-                                    onClick = { activeClassForStudentsList = null },
-                                    modifier = Modifier.size(40.dp)
+                                    onClick = { showExportClassListPdfDialog = true },
+                                    modifier = Modifier.testTag("export_class_list_pdf_button")
                                 ) {
-                                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                    Icon(
+                                        imageVector = Icons.Default.PictureAsPdf,
+                                        contentDescription = if (Tr.isArabic()) "تصدير القائمة PDF" else "Exporter Liste PDF",
+                                        tint = MaterialTheme.colorScheme.tertiary
+                                    )
                                 }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                ClassColorDot(activeClass.id, activeClass.name, size = 14)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = activeClass.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (Tr.isArabic()) "(${students.size} تلميذ)" else "(${students.size} élèves)",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
+                                IconButton(onClick = { showAddStudentDialog = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = if (Tr.isArabic()) "إضافة تلميذ" else "Ajouter un élève",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            } else if (currentSubView == "stats") {
                                 IconButton(onClick = {
-                                    planPdfLauncher.launch("Plan_de_classe_${activeClass.name.replace(" ", "_")}.pdf")
+                                    statsPdfLauncher.launch("Statistiques_${safeClassNameForFile}.pdf")
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.PictureAsPdf,
-                                        contentDescription = if (Tr.isArabic()) "تصدير مخطط الجلوس PDF" else "Exporter Plan PDF",
+                                        contentDescription = if (Tr.isArabic()) "تصدير الإحصائيات PDF" else "Exporter Statistiques PDF",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
+                            // Note : Dans "plan" (Plan de classe), aucune icône PDF n'est affichée à côté du nom de la classe
                         }
 
+                        // Barre d'onglets fixe (Liste / Plan / Stats)
                         SingleChoiceSegmentedButtonRow(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                         ) {
@@ -967,139 +557,400 @@ fun StudentsScreen(viewModel: AppViewModel) {
                             }
                         }
 
-                        HorizontalSeatingChartView(
-                            students = students,
-                            classId = activeClass.id,
-                            onAssignSeat = { studentId, seatIdx ->
-                                viewModel.assignStudentSeat(activeClass.id, studentId, seatIdx)
-                            },
-                            onFreeSeat = { seatIdx ->
-                                viewModel.freeSeat(activeClass.id, seatIdx)
-                            },
-                            onSwapSeats = { studentId1, seatIdx1, studentId2, seatIdx2 ->
-                                viewModel.swapStudentSeats(activeClass.id, studentId1, seatIdx1, studentId2, seatIdx2)
-                            },
-                            onAutoAssign = {
-                                viewModel.autoAssignSeatsAlphabetical(activeClass.id)
-                            },
-                            onClearAll = {
-                                viewModel.clearAllClassSeats(activeClass.id)
-                            },
-                            onExportPdf = {
-                                planPdfLauncher.launch("Plan_de_classe_${activeClass.name.replace(" ", "_")}.pdf")
-                            }
-                        )
-                    }
-                } else {
-                    AdaptiveScreenContainer(maxWidth = 960.dp) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .statusBarsPadding()
-                                .navigationBarsPadding()
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                        // Header of the full-screen dialog for stats
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = { activeClassForStudentsList = null },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        // Contenu dynamique selon la sous-rubrique active
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            when (currentSubView) {
+                                "liste" -> {
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        // --- BARRE DE RECHERCHE ET BOUTON DE FILTRE ---
+                                        item(key = "search_and_filter_bar", contentType = "header") {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                FineSearchBar(
+                                                    value = searchQuery,
+                                                    onValueChange = { searchQuery = it },
+                                                    placeholder = if (Tr.isArabic()) "بحث عن تلميذ بالاسم أو اللقب..." else "Rechercher un élève...",
+                                                    testTag = "search_student_field",
+                                                    modifier = Modifier.weight(1f)
+                                                )
+
+                                                // Button to toggle advanced filter panel
+                                                FilledIconButton(
+                                                    onClick = { showFiltersPanel = !showFiltersPanel },
+                                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                                        containerColor = if (selectedGenderFilter != "Tous" || selectedAgeFilter != "Tous" || selectedAverageFilter != "Tous" || selectedGradeFilter != "Tous" || selectedSortOption != "Ordre personnalisé (N°)") {
+                                                            MaterialTheme.colorScheme.primary
+                                                        } else {
+                                                            MaterialTheme.colorScheme.secondaryContainer
+                                                        },
+                                                        contentColor = if (selectedGenderFilter != "Tous" || selectedAgeFilter != "Tous" || selectedAverageFilter != "Tous" || selectedGradeFilter != "Tous" || selectedSortOption != "Ordre personnalisé (N°)") {
+                                                            MaterialTheme.colorScheme.onPrimary
+                                                        } else {
+                                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                                        }
+                                                    ),
+                                                    modifier = Modifier.size(38.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.FilterList,
+                                                        contentDescription = if (Tr.isArabic()) "عوامل التصفية" else "Filtres",
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // --- PANNEAU DE FILTRAGE EXPANDABLE ---
+                                        item(key = "expandable_filters_panel", contentType = "filters") {
+                                            androidx.compose.animation.AnimatedVisibility(
+                                                visible = showFiltersPanel,
+                                                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                                                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+                                            ) {
+                                                Card(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 6.dp),
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                                                    )
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.padding(16.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                                    ) {
+                                                        // Filter Header
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text(
+                                                                text = if (Tr.isArabic()) "تصفية وترتيب متقدم" else "Filtres avancés",
+                                                                style = MaterialTheme.typography.titleSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            TextButton(
+                                                                onClick = {
+                                                                    selectedGenderFilter = "Tous"
+                                                                    selectedAgeFilter = "Tous"
+                                                                    selectedAverageFilter = "Tous"
+                                                                    selectedGradeFilter = "Tous"
+                                                                    selectedGroupFilter = "ALL"
+                                                                    selectedSortOption = "Ordre personnalisé (N°)"
+                                                                }
+                                                            ) {
+                                                                Text(Tr.t("Réinitialiser"))
+                                                            }
+                                                        }
+
+                                                        // 1. Filter by Gender
+                                                        Column {
+                                                            Text(Tr.t("Sexe"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                                listOf("Tous", "M", "F").forEach { genderVal ->
+                                                                    val label = when (genderVal) {
+                                                                        "M" -> Tr.t("Garçons ♂")
+                                                                        "F" -> Tr.t("Filles ♀")
+                                                                        else -> Tr.t("Tous")
+                                                                    }
+                                                                    FilterChip(
+                                                                        selected = selectedGenderFilter == genderVal,
+                                                                        onClick = { selectedGenderFilter = genderVal },
+                                                                        label = { Text(label) }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // 2. Filter by Age
+                                                        if (presentAges.isNotEmpty()) {
+                                                            Column {
+                                                                Text(Tr.t("Âge"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                                                Spacer(modifier = Modifier.height(4.dp))
+                                                                Row(
+                                                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                                ) {
+                                                                    FilterChip(
+                                                                        selected = selectedAgeFilter == "Tous",
+                                                                        onClick = { selectedAgeFilter = "Tous" },
+                                                                        label = { Text(Tr.t("Tous")) }
+                                                                    )
+                                                                    presentAges.forEach { age ->
+                                                                        val ageStr = age.toString()
+                                                                        val label = if (Tr.isArabic()) "$age سنة" else "$age ans"
+                                                                        FilterChip(
+                                                                            selected = selectedAgeFilter == ageStr,
+                                                                            onClick = { selectedAgeFilter = ageStr },
+                                                                            label = { Text(label) }
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // 3. Filter by Average
+                                                        Column {
+                                                            Text(Tr.t("Performance (Moyennes)"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Row(
+                                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                            ) {
+                                                                listOf("Tous", "Admis", "Non-admis", "Excellent", "Sans Moyenne").forEach { avgVal ->
+                                                                    val label = when (avgVal) {
+                                                                        "Admis" -> Tr.t("Admis (≥ 10)")
+                                                                        "Non-admis" -> Tr.t("Non-admis (< 10)")
+                                                                        "Excellent" -> Tr.t("Excellent (≥ 16)")
+                                                                        "Sans Moyenne" -> Tr.t("Non évalué")
+                                                                        else -> Tr.t("Tous")
+                                                                    }
+                                                                    FilterChip(
+                                                                        selected = selectedAverageFilter == avgVal,
+                                                                        onClick = { selectedAverageFilter = avgVal },
+                                                                        label = { Text(label) }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // 4. Filter by Missing/Specific Grades
+                                                        Column {
+                                                            Text(Tr.t("Évaluations et Notes"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Row(
+                                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                            ) {
+                                                                listOf("Tous", "MissingDevoir", "MissingFinal", "NoGrades").forEach { grdVal ->
+                                                                    val label = when (grdVal) {
+                                                                        "MissingDevoir" -> Tr.t("Devoir manquant")
+                                                                        "MissingFinal" -> Tr.t("Composition manquante")
+                                                                        "NoGrades" -> Tr.t("Aucune note")
+                                                                        else -> Tr.t("Tous")
+                                                                    }
+                                                                    FilterChip(
+                                                                        selected = selectedGradeFilter == grdVal,
+                                                                        onClick = { selectedGradeFilter = grdVal },
+                                                                        label = { Text(label) }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // 5. Sorting
+                                                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                            Text(Tr.t("Trier par"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                                            Row(
+                                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                            ) {
+                                                                listOf("Ordre personnalisé (N°)", "Nom (A-Z)", "Nom (Z-A)", "Moyenne (+)", "Moyenne (-)", "Âge (Le plus jeune)", "Âge (Le plus âgé)").forEach { sortVal ->
+                                                                    FilterChip(
+                                                                        selected = selectedSortOption == sortVal,
+                                                                        onClick = { selectedSortOption = sortVal },
+                                                                        label = { Text(Tr.t(sortVal)) }
+                                                                    )
+                                                                }
+                                                            }
+
+                                                            if (selectedSortOption != "Ordre personnalisé (N°)" && filteredStudents.isNotEmpty()) {
+                                                                FilledTonalButton(
+                                                                    onClick = {
+                                                                        viewModel.reorderStudents(activeClass.id, filteredStudents.map { it.first })
+                                                                        selectedSortOption = "Ordre personnalisé (N°)"
+                                                                        Toast.makeText(context, if (isAr) "تم حفظ الترتيب بنجاح!" else "Classement sauvegardé avec succès !", Toast.LENGTH_SHORT).show()
+                                                                    },
+                                                                    shape = RoundedCornerShape(8.dp),
+                                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                                                    modifier = Modifier.padding(top = 4.dp)
+                                                                ) {
+                                                                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                                    Spacer(Modifier.width(6.dp))
+                                                                    Text(Tr.t("Enregistrer ce classement comme ordre officiel"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Group Quick Filter Row (if class has groups defined)
+                                        if (classGroups.isNotEmpty()) {
+                                            item(key = "group_quick_filter_row", contentType = "group_filter") {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .horizontalScroll(rememberScrollState()),
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = if (isAr) "الفوج :" else "Groupe :",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                    FilterChip(
+                                                        selected = selectedGroupFilter == "ALL",
+                                                        onClick = { selectedGroupFilter = "ALL" },
+                                                        label = { Text("${if (isAr) "الكل" else "Tous"} (${students.size})") }
+                                                    )
+                                                    classGroups.forEach { grp ->
+                                                        val grpCount = students.count { it.groupName.trim() == grp }
+                                                        FilterChip(
+                                                            selected = selectedGroupFilter == grp,
+                                                            onClick = { selectedGroupFilter = grp },
+                                                            label = { Text("${if (isAr) grp.replace("G", "ف").replace("g", "ف") else grp} ($grpCount)") }
+                                                        )
+                                                    }
+                                                    val noGrpCount = students.count { it.groupName.trim().isBlank() }
+                                                    if (noGrpCount > 0) {
+                                                        FilterChip(
+                                                            selected = selectedGroupFilter == "NONE",
+                                                            onClick = { selectedGroupFilter = "NONE" },
+                                                            label = { Text("${if (isAr) "بدون فوج" else "Sans groupe"} ($noGrpCount)") }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (students.isEmpty()) {
+                                            item(key = "empty_students_placeholder", contentType = "empty") {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 48.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.PeopleOutline,
+                                                            contentDescription = "No students",
+                                                            tint = MaterialTheme.colorScheme.outline,
+                                                            modifier = Modifier.size(64.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Text(
+                                                            text = if (Tr.isArabic()) "لا يوجد أي تلميذ في هذا الفوج.\nاضغط على '+' لإضافة تلميذ." else "Aucun élève dans cette classe.\nCliquez sur '+' pour en ajouter.",
+                                                            textAlign = TextAlign.Center,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = MaterialTheme.colorScheme.outline
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else if (filteredStudents.isEmpty()) {
+                                            item(key = "no_matching_students_placeholder", contentType = "empty") {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 48.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Search,
+                                                            contentDescription = "No results",
+                                                            tint = MaterialTheme.colorScheme.outline,
+                                                            modifier = Modifier.size(64.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Text(
+                                                            text = if (Tr.isArabic()) "لا يوجد أي تلميذ يطابق معايير البحث." else "Aucun élève ne correspond à vos critères de recherche.",
+                                                            textAlign = TextAlign.Center,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = MaterialTheme.colorScheme.outline
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            itemsIndexed(
+                                                items = filteredStudents,
+                                                key = { _, (student, _, _) -> student.id },
+                                                contentType = { _, _ -> "student_card" }
+                                            ) { index, (student, _, _) ->
+                                                val studentOrderNum = if (student.orderIndex > 0) student.orderIndex else (index + 1)
+                                                StudentNumberedItemCard(
+                                                    number = studentOrderNum,
+                                                    student = student,
+                                                    average = null,
+                                                    onClick = { studentToEdit = student },
+                                                    onDelete = { studentToDelete = student },
+                                                    onChangePosition = {
+                                                        studentToChangePosition = Pair(student, studentOrderNum)
+                                                    }
+                                                )
+                                            }
+                                            item(key = "bottom_spacer", contentType = "spacer") {
+                                                Spacer(modifier = Modifier.height(36.dp))
+                                            }
+                                        }
+                                    }
                                 }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                ClassColorDot(activeClass.id, activeClass.name, size = 14)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = activeClass.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (Tr.isArabic()) "(${students.size} تلميذ)" else "(${students.size} élèves)",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                IconButton(onClick = {
-                                    statsPdfLauncher.launch("Statistiques_${activeClass.name.replace(" ", "_")}.pdf")
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.PictureAsPdf,
-                                        contentDescription = if (Tr.isArabic()) "تصدير الإحصائيات PDF" else "Exporter Statistiques PDF",
-                                        tint = MaterialTheme.colorScheme.primary
+                                "plan" -> {
+                                    HorizontalSeatingChartView(
+                                        students = students,
+                                        classId = activeClass.id,
+                                        onAssignSeat = { studentId, seatIdx ->
+                                            viewModel.assignStudentSeat(activeClass.id, studentId, seatIdx)
+                                        },
+                                        onFreeSeat = { seatIdx ->
+                                            viewModel.freeSeat(activeClass.id, seatIdx)
+                                        },
+                                        onSwapSeats = { studentId1, seatIdx1, studentId2, seatIdx2 ->
+                                            viewModel.swapStudentSeats(activeClass.id, studentId1, seatIdx1, studentId2, seatIdx2)
+                                        },
+                                        onAutoAssign = {
+                                            viewModel.autoAssignSeatsAlphabetical(activeClass.id)
+                                        },
+                                        onClearAll = {
+                                            viewModel.clearAllClassSeats(activeClass.id)
+                                        },
+                                        onExportPdf = {
+                                            planPdfLauncher.launch("Plan_de_classe_${safeClassNameForFile}.pdf")
+                                        }
                                     )
                                 }
-                            }
-                        }
-
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                        ) {
-                            SegmentedButton(
-                                selected = currentSubView == "liste",
-                                onClick = { currentSubView = "liste" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.FormatListNumbered, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(Tr.t("Liste"), fontSize = 11.sp, maxLines = 1)
-                                }
-                            }
-                            SegmentedButton(
-                                selected = currentSubView == "plan",
-                                onClick = { currentSubView = "plan" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(Tr.t("Plan"), fontSize = 11.sp, maxLines = 1)
-                                }
-                            }
-                            SegmentedButton(
-                                selected = currentSubView == "stats",
-                                onClick = { currentSubView = "stats" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(Tr.t("Stats"), fontSize = 11.sp, maxLines = 1)
+                                else -> {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .verticalScroll(rememberScrollState()),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        ClassStatisticsView(
+                                            students = students,
+                                            grades = grades,
+                                            activeClass = activeClass,
+                                            currentSettings = currentSettings,
+                                            onExportPdf = {
+                                                statsPdfLauncher.launch("Statistiques_${safeClassNameForFile}.pdf")
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
-
-                        ClassStatisticsView(
-                            students = students,
-                            grades = grades,
-                            activeClass = activeClass,
-                            currentSettings = currentSettings,
-                            onExportPdf = {
-                                statsPdfLauncher.launch("Statistiques_${activeClass.name.replace(" ", "_")}.pdf")
-                            }
-                        )
                     }
                 }
 
                 // Dialogue pour changer le numéro / la position de l'élève
-                if (studentToChangePosition != null && activeClass != null) {
+                if (studentToChangePosition != null) {
                     val (targetStudent, currentPos) = studentToChangePosition!!
                     var targetPosNum by remember(targetStudent.id) { mutableIntStateOf(currentPos) }
                     var targetPosText by remember(targetStudent.id) { mutableStateOf(currentPos.toString()) }
@@ -1256,8 +1107,8 @@ fun StudentsScreen(viewModel: AppViewModel) {
                     )
                 }
 
-                // Dialogue d'options d'export PDF de la liste des élèves
-                if (showExportClassListPdfDialog && activeClass != null) {
+                // Dialogue d'options d'export PDF de la liste des élèves (accessible directement depuis "Liste")
+                if (showExportClassListPdfDialog) {
                     var exportScope by remember { mutableStateOf("ALL") } // "ALL" or "GROUPS"
                     val availableClassGroups = remember(students) {
                         val grps = students.map { it.groupName.trim() }.filter { it.isNotBlank() }.distinct().toMutableList()
@@ -1282,36 +1133,38 @@ fun StudentsScreen(viewModel: AppViewModel) {
 
                                 // Option 1: Toute la classe
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(10.dp),
                                     color = if (exportScope == "ALL") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.fillMaxWidth().clickable { exportScope = "ALL" }
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         RadioButton(selected = exportScope == "ALL", onClick = { exportScope = "ALL" })
                                         Spacer(Modifier.width(8.dp))
                                         Text(
                                             text = if (isAr) "كامل القسم (${students.size} تلميذ)" else "Toute la classe (${students.size} élèves)",
-                                            fontWeight = if (exportScope == "ALL") FontWeight.Bold else FontWeight.Normal
+                                            fontWeight = if (exportScope == "ALL") FontWeight.Bold else FontWeight.Normal,
+                                            color = if (exportScope == "ALL") MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
 
                                 // Option 2: Par groupe(s)
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(10.dp),
                                     color = if (exportScope == "GROUPS") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.fillMaxWidth().clickable { exportScope = "GROUPS" }
                                 ) {
-                                    Column(modifier = Modifier.padding(horizontal = 2.dp, vertical = 6.dp)) {
+                                    Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             RadioButton(selected = exportScope == "GROUPS", onClick = { exportScope = "GROUPS" })
                                             Spacer(Modifier.width(8.dp))
                                             Text(
                                                 text = if (isAr) "أفواج محددة" else "Par groupe(s) sélectionné(s)",
-                                                fontWeight = if (exportScope == "GROUPS") FontWeight.Bold else FontWeight.Normal
+                                                fontWeight = if (exportScope == "GROUPS") FontWeight.Bold else FontWeight.Normal,
+                                                color = if (exportScope == "GROUPS") MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
 
@@ -1365,7 +1218,7 @@ fun StudentsScreen(viewModel: AppViewModel) {
                                             (g.isNotBlank() && selectedGroupsForExport.contains(g)) || (g.isBlank() && includeUnassigned)
                                         }
                                     }
-                                    if (list.isEmpty()) {
+                                    if (exportScope == "GROUPS" && list.isEmpty() && students.isNotEmpty()) {
                                         Toast.makeText(context, if (isAr) "لم يتم تحديد أي تلميذ للتصدير" else "Aucun élève sélectionné pour l'export", Toast.LENGTH_SHORT).show()
                                     } else {
                                         val groupSubtitle = if (exportScope == "GROUPS") {
@@ -1387,7 +1240,7 @@ fun StudentsScreen(viewModel: AppViewModel) {
                                             val grps = selectedGroupsForExport.toList().sorted()
                                             if (grps.isNotEmpty()) "_${grps.joinToString("_")}" else "_Groupes"
                                         } else ""
-                                        classListPdfLauncher.launch("Liste_${activeClass.name.replace(" ", "_")}$groupSuffix.pdf")
+                                        classListPdfLauncher.launch("Liste_${safeClassNameForFile}$groupSuffix.pdf")
                                     }
                                 }
                             ) {
@@ -1402,7 +1255,6 @@ fun StudentsScreen(viewModel: AppViewModel) {
                     )
                 }
             }
-        }
         }
     }
 
@@ -2787,8 +2639,10 @@ fun StudentNumberedItemCard(
             HorizontalDivider(color = primaryAccent.copy(alpha = 0.15f), thickness = 0.8.dp)
 
             // Informations d'état civil : Date de naissance (+ âge), et Lieu de naissance SOUS la date
-            val age = calculateAge(student.birthDate)
-            val ageStr = if (age != null) (if (Tr.isArabic()) " ($age سنة)" else " ($age ans)") else ""
+            val isAr = Tr.isArabic()
+            val age = remember(student.birthDate) { calculateAge(student.birthDate) }
+            val formattedBirthDate = remember(student.birthDate) { formatBirthDateDisplay(student.birthDate) }
+            val ageStr = if (age != null) (if (isAr) " ($age سنة)" else " ($age ans)") else ""
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -2806,13 +2660,13 @@ fun StudentNumberedItemCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Cake,
-                            contentDescription = if (Tr.isArabic()) "تاريخ الميلاد" else "Date de naissance",
+                            contentDescription = if (isAr) "تاريخ الميلاد" else "Date de naissance",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(13.dp)
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = (if (Tr.isArabic()) "تاريخ الميلاد : " else "Né(e) le : ") + "${formatBirthDateDisplay(student.birthDate).ifBlank { if (Tr.isArabic()) "غير محدد" else "N/R" }}$ageStr",
+                            text = (if (isAr) "تاريخ الميلاد : " else "Né(e) le : ") + "${formattedBirthDate.ifBlank { if (isAr) "غير محدد" else "N/R" }}$ageStr",
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,

@@ -858,7 +858,7 @@ fun HomeScreen(
 
                 )
 
-                // Contenu premier plan de la carte
+                // Contenu premier plan de la carte (design strictement identique en Français et en Arabe)
 
                 Column(
 
@@ -866,9 +866,9 @@ fun HomeScreen(
 
                         .fillMaxWidth()
 
-                        .padding(horizontal = 12.dp, vertical = if (isAr) 6.dp else 9.dp),
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
 
-                    verticalArrangement = Arrangement.spacedBy(if (isAr) 4.dp else 6.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
 
                 ) {
 
@@ -896,7 +896,7 @@ fun HomeScreen(
 
                                 modifier = Modifier
 
-                                    .size(if (isAr) 22.dp else 26.dp)
+                                    .size(26.dp)
 
                                     .shadow(2.dp, RoundedCornerShape(8.dp))
 
@@ -930,7 +930,7 @@ fun HomeScreen(
 
                                     tint = Color.White,
 
-                                    modifier = Modifier.size(if (isAr) 13.dp else 15.dp)
+                                    modifier = Modifier.size(15.dp)
 
                                 )
 
@@ -940,7 +940,7 @@ fun HomeScreen(
 
                                 text = headerTitle,
 
-                                fontSize = if (isAr) 13.sp else 12.5.sp,
+                                fontSize = 12.5.sp,
 
                                 fontWeight = FontWeight.Black,
 
@@ -960,7 +960,7 @@ fun HomeScreen(
 
                             contentAlignment = Alignment.Center,
 
-                            modifier = Modifier.size(if (isAr) 22.dp else 24.dp)
+                            modifier = Modifier.size(24.dp)
 
                         ) {
 
@@ -970,7 +970,7 @@ fun HomeScreen(
 
                                 modifier = Modifier
 
-                                    .size(if (isAr) 9.dp else 10.dp)
+                                    .size(10.dp)
 
                                     .graphicsLayer(
 
@@ -1008,7 +1008,7 @@ fun HomeScreen(
 
                                 Box(
 
-                                    modifier = Modifier.padding(if (isAr) 4.5.dp else 5.dp),
+                                    modifier = Modifier.padding(5.dp),
 
                                     contentAlignment = Alignment.Center
 
@@ -1020,7 +1020,7 @@ fun HomeScreen(
 
                                         modifier = Modifier
 
-                                            .size(if (isAr) 6.5.dp else 7.5.dp)
+                                            .size(7.5.dp)
 
                                             .graphicsLayer(
 
@@ -1094,7 +1094,7 @@ fun HomeScreen(
 
                             verticalAlignment = Alignment.CenterVertically,
 
-                            horizontalArrangement = Arrangement.spacedBy(if (isAr) 4.dp else 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
 
                             modifier = Modifier.fillMaxWidth()
 
@@ -1126,7 +1126,7 @@ fun HomeScreen(
 
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
 
-                                    modifier = Modifier.padding(horizontal = if (isAr) 5.dp else 7.dp, vertical = if (isAr) 2.dp else 3.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
 
                                 ) {
 
@@ -1138,7 +1138,7 @@ fun HomeScreen(
 
                                         tint = wavePrimary,
 
-                                        modifier = Modifier.size(if (isAr) 12.dp else 13.dp)
+                                        modifier = Modifier.size(13.dp)
 
                                     )
 
@@ -1148,7 +1148,7 @@ fun HomeScreen(
 
                                         fontWeight = FontWeight.ExtraBold,
 
-                                        fontSize = if (isAr) 12.sp else 11.5.sp,
+                                        fontSize = 11.5.sp,
 
                                         color = if (isDark) Color(0xFFF1F5F9) else Color(0xFF1E293B)
 
@@ -1186,7 +1186,7 @@ fun HomeScreen(
 
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
 
-                                        modifier = Modifier.padding(horizontal = if (isAr) 5.dp else 7.dp, vertical = if (isAr) 2.dp else 3.dp)
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
 
                                     ) {
 
@@ -1198,7 +1198,7 @@ fun HomeScreen(
 
                                             tint = Color(0xFFD97706),
 
-                                            modifier = Modifier.size(if (isAr) 12.dp else 13.dp)
+                                            modifier = Modifier.size(13.dp)
 
                                         )
 
@@ -1208,7 +1208,7 @@ fun HomeScreen(
 
                                             fontWeight = FontWeight.ExtraBold,
 
-                                            fontSize = if (isAr) 12.sp else 11.sp,
+                                            fontSize = 11.5.sp,
 
                                             color = if (isDark) Color(0xFFFDE68A) else Color(0xFF92400E)
 
@@ -1246,7 +1246,7 @@ fun HomeScreen(
 
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
 
-                                        modifier = Modifier.padding(horizontal = if (isAr) 5.dp else 7.dp, vertical = if (isAr) 2.dp else 3.dp)
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
 
                                     ) {
 
@@ -1254,7 +1254,7 @@ fun HomeScreen(
 
                                             modifier = Modifier
 
-                                                .size(if (isAr) 6.dp else 7.dp)
+                                                .size(7.dp)
 
                                                 .clip(CircleShape)
 
@@ -1266,7 +1266,7 @@ fun HomeScreen(
 
                                             text = lessonInfo.className.trim(),
 
-                                            fontSize = if (isAr) 12.5.sp else 11.5.sp,
+                                            fontSize = 11.5.sp,
 
                                             fontWeight = FontWeight.Black,
 
@@ -1308,7 +1308,7 @@ fun HomeScreen(
 
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
 
-                                        modifier = Modifier.padding(horizontal = if (isAr) 5.dp else 7.dp, vertical = if (isAr) 2.dp else 3.dp)
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
 
                                     ) {
 
@@ -1320,7 +1320,7 @@ fun HomeScreen(
 
                                             tint = if (isDark) Color(0xFF2DD4BF) else Color(0xFF0D9488),
 
-                                            modifier = Modifier.size(if (isAr) 12.dp else 13.dp)
+                                            modifier = Modifier.size(13.dp)
 
                                         )
 
@@ -1330,7 +1330,7 @@ fun HomeScreen(
 
                                             fontWeight = FontWeight.Black,
 
-                                            fontSize = if (isAr) 12.sp else 11.5.sp,
+                                            fontSize = 11.5.sp,
 
                                             color = if (isDark) Color(0xFF99F6E4) else Color(0xFF0F766E)
 
@@ -1466,7 +1466,7 @@ fun HomeScreen(
 
             modifier = Modifier.fillMaxWidth(),
 
-            verticalArrangement = Arrangement.spacedBy(if (isAr) 4.dp else 8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
 
         ) {
 
@@ -1476,7 +1476,7 @@ fun HomeScreen(
 
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
 
-                modifier = Modifier.padding(start = 4.dp, top = if (isAr) 0.dp else 2.dp)
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
 
             ) {
 
@@ -1484,7 +1484,7 @@ fun HomeScreen(
 
                     modifier = Modifier
 
-                        .size(if (isAr) 5.dp else 6.dp)
+                        .size(6.dp)
 
                         .clip(CircleShape)
 
@@ -1500,9 +1500,9 @@ fun HomeScreen(
 
                     letterSpacing = 0.5.sp,
 
-                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
+                    color = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569),
 
-                    fontSize = if (isAr) 12.sp else 11.5.sp
+                    fontSize = 11.5.sp
 
                 )
 
@@ -1514,7 +1514,7 @@ fun HomeScreen(
 
                 modifier = Modifier.fillMaxWidth(),
 
-                horizontalArrangement = Arrangement.spacedBy(if (isAr) 6.dp else 9.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
 
             ) {
 
@@ -1574,7 +1574,7 @@ fun HomeScreen(
 
                 modifier = Modifier.fillMaxWidth(),
 
-                horizontalArrangement = Arrangement.spacedBy(if (isAr) 6.dp else 9.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
 
             ) {
 
@@ -1638,7 +1638,7 @@ fun HomeScreen(
 
 /**
 
- * Encadré d'outil et de document au design iOS 27 3D Spatial Glass :
+ * Encadré d'outil et de document au design iOS 27 3D Spatial Glass (identique en Français et Arabe) :
 
  * - Icône 3D avec biseau volumétrique et reflet miroitant
 
@@ -1678,11 +1678,11 @@ private fun ArtisticToolGridCard(
 
     val effectiveBg = if (isLight) {
 
-        accentColor.copy(alpha = 0.07f).compositeOver(Color.White)
+        accentColor.copy(alpha = 0.08f).compositeOver(Color.White)
 
     } else {
 
-        accentColor.copy(alpha = 0.14f).compositeOver(Color(0xFF141722))
+        accentColor.copy(alpha = 0.16f).compositeOver(Color(0xFF131C31))
 
     }
 
@@ -1692,13 +1692,13 @@ private fun ArtisticToolGridCard(
 
             .shadow(
 
-                elevation = if (isAr) 2.dp else 4.dp,
+                elevation = 3.dp,
 
-                shape = RoundedCornerShape(if (isAr) 14.dp else 20.dp),
+                shape = RoundedCornerShape(20.dp),
 
-                ambientColor = accentColor.copy(alpha = if (isLight) 0.18f else 0.40f),
+                ambientColor = accentColor.copy(alpha = if (isLight) 0.16f else 0.36f),
 
-                spotColor = accentColor.copy(alpha = if (isLight) 0.28f else 0.55f)
+                spotColor = accentColor.copy(alpha = if (isLight) 0.24f else 0.48f)
 
             )
 
@@ -1712,23 +1712,23 @@ private fun ArtisticToolGridCard(
 
                         (if (isLight) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.35f)),
 
-                        accentColor.copy(alpha = if (isLight) 0.45f else 0.50f),
+                        accentColor.copy(alpha = if (isLight) 0.45f else 0.55f),
 
-                        accentColor.copy(alpha = if (isLight) 0.15f else 0.20f)
+                        accentColor.copy(alpha = if (isLight) 0.18f else 0.25f)
 
                     )
 
                 ),
 
-                shape = RoundedCornerShape(if (isAr) 14.dp else 20.dp)
+                shape = RoundedCornerShape(20.dp)
 
             )
 
-            .clip(RoundedCornerShape(if (isAr) 14.dp else 20.dp))
+            .clip(RoundedCornerShape(20.dp))
 
             .clickable(onClick = onClick),
 
-        shape = RoundedCornerShape(if (isAr) 14.dp else 20.dp),
+        shape = RoundedCornerShape(20.dp),
 
         color = effectiveBg
 
@@ -1774,9 +1774,9 @@ private fun ArtisticToolGridCard(
 
                     .fillMaxWidth()
 
-                    .padding(horizontal = if (isAr) 9.dp else 11.dp, vertical = if (isAr) 5.dp else 7.dp),
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
 
-                verticalArrangement = Arrangement.spacedBy(if (isAr) 3.dp else 5.dp)
+                verticalArrangement = Arrangement.spacedBy(5.dp)
 
             ) {
 
@@ -1798,11 +1798,11 @@ private fun ArtisticToolGridCard(
 
                         modifier = Modifier
 
-                            .size(if (isAr) 26.dp else 30.dp)
+                            .size(30.dp)
 
-                            .shadow(2.dp, RoundedCornerShape(if (isAr) 8.dp else 10.dp))
+                            .shadow(2.dp, RoundedCornerShape(10.dp))
 
-                            .clip(RoundedCornerShape(if (isAr) 8.dp else 10.dp))
+                            .clip(RoundedCornerShape(10.dp))
 
                             .background(Brush.linearGradient(gradientColors))
 
@@ -1822,7 +1822,7 @@ private fun ArtisticToolGridCard(
 
                                 ),
 
-                                RoundedCornerShape(if (isAr) 8.dp else 10.dp)
+                                RoundedCornerShape(10.dp)
 
                             ),
 
@@ -1838,13 +1838,13 @@ private fun ArtisticToolGridCard(
 
                             tint = Color.White,
 
-                            modifier = Modifier.size(if (isAr) 15.dp else 17.dp)
+                            modifier = Modifier.size(17.dp)
 
                         )
 
                     }
 
-                    // Badge de catégorie tactile iOS 27
+                    // Badge de catégorie tactile
 
                     Surface(
 
@@ -1866,7 +1866,7 @@ private fun ArtisticToolGridCard(
 
                             text = badgeText,
 
-                            fontSize = if (isAr) 9.5.sp else 9.sp,
+                            fontSize = 9.5.sp,
 
                             fontWeight = FontWeight.Black,
 
@@ -1874,7 +1874,7 @@ private fun ArtisticToolGridCard(
 
                             color = if (isLight) accentColor else Color.White,
 
-                            modifier = Modifier.padding(horizontal = if (isAr) 5.dp else 6.dp, vertical = if (isAr) 1.5.dp else 2.dp)
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
 
                         )
 
@@ -1884,7 +1884,7 @@ private fun ArtisticToolGridCard(
 
                 // Textes : Titre net et sous-titre élégant
 
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(1.5.dp)) {
 
                     Text(
 
@@ -1900,9 +1900,9 @@ private fun ArtisticToolGridCard(
 
                         overflow = TextOverflow.Ellipsis,
 
-                        fontSize = if (isAr) 13.5.sp else 12.5.sp,
+                        fontSize = 12.5.sp,
 
-                        lineHeight = if (isAr) 16.sp else 16.sp
+                        lineHeight = 16.sp
 
                     )
 
@@ -1920,9 +1920,9 @@ private fun ArtisticToolGridCard(
 
                         overflow = TextOverflow.Ellipsis,
 
-                        fontSize = if (isAr) 11.sp else 10.sp,
+                        fontSize = 10.5.sp,
 
-                        lineHeight = if (isAr) 13.5.sp else 13.sp
+                        lineHeight = 13.5.sp
 
                     )
 

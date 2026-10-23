@@ -165,10 +165,15 @@ fun ClassBadge(
     modifier: Modifier = Modifier
 ) {
     val palette = ClassColorHelper.getPaletteForClass(classId, className)
+    val isLight = MaterialTheme.colorScheme.background == com.example.ui.theme.OffWhite || MaterialTheme.colorScheme.background == Color(0xFFF8FAFC)
+    val bg = if (isLight) palette.container else palette.primary.copy(alpha = 0.22f)
+    val textCol = if (isLight) palette.onContainer else Color.White
+    val dotCol = if (isLight) palette.primary else palette.container
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(palette.container)
+            .background(bg)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -176,14 +181,15 @@ fun ClassBadge(
             modifier = Modifier
                 .size(7.dp)
                 .clip(CircleShape)
-                .background(palette.primary)
+                .background(dotCol)
         )
         Spacer(modifier = Modifier.width(5.dp))
         Text(
             text = className,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = palette.onContainer
+            color = textCol
         )
     }
 }
+

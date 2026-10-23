@@ -66,34 +66,48 @@ fun getFontFamilyByName(name: String, activeLanguage: String = "fr"): FontFamily
     }
 }
 
-// Thème académique bleu marine et blanc cassé pour la journée (iOS 27 Spatial Light)
+// Thème académique harmonieux et professionnel pour le mode clair
 private val LightColorScheme = lightColorScheme(
     primary = NavyPrimary,
     onPrimary = Color.White,
     primaryContainer = NavyLight,
-    onPrimaryContainer = NavyPrimary,
-    secondary = SlateGray,
+    onPrimaryContainer = NavyDark,
+    secondary = Color(0xFF059669),
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD1FAE5),
+    onSecondaryContainer = Color(0xFF065F46),
+    tertiary = GoldAccent,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFEF3C7),
+    onTertiaryContainer = Color(0xFF92400E),
     background = OffWhite,
     onBackground = Charcoal,
     surface = Color.White,
     onSurface = Charcoal,
     surfaceVariant = Color(0xFFF1F5F9),
     onSurfaceVariant = Color(0xFF475569),
-    outline = Color(0xFFCBD5E1),
+    outline = Color(0xFF94A3B8),
     outlineVariant = Color(0xFFE2E8F0),
-    tertiary = GoldAccent,
-    onTertiary = Color.White
+    error = Color(0xFFDC2626),
+    onError = Color.White,
+    errorContainer = Color(0xFFFEE2E2),
+    onErrorContainer = Color(0xFF991B1B)
 )
 
-// Thème académique sobre pour la nuit (iOS 27 Spatial Dark)
+// Thème académique harmonieux et contrasté pour le mode nuit
 private val DarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF0B1120),
     primaryContainer = DarkPrimaryContainer,
     onPrimaryContainer = DarkOnPrimaryContainer,
-    secondary = SlateGray,
-    onSecondary = DarkTextPrimary,
+    secondary = Color(0xFF34D399),
+    onSecondary = Color(0xFF064E3B),
+    secondaryContainer = Color(0xFF065F46),
+    onSecondaryContainer = Color(0xFFD1FAE5),
+    tertiary = Color(0xFFFBBF24),
+    onTertiary = Color(0xFF451A03),
+    tertiaryContainer = Color(0xFF78350F),
+    onTertiaryContainer = Color(0xFFFEF3C7),
     background = DarkBackground,
     onBackground = DarkTextPrimary,
     surface = DarkSurface,
@@ -101,8 +115,11 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = DarkTextSecondary,
     outline = DarkOutline,
-    tertiary = GoldAccent,
-    onTertiary = Charcoal
+    outlineVariant = DarkOutlineVariant,
+    error = Color(0xFFF87171),
+    onError = Color(0xFF450A0A),
+    errorContainer = Color(0xFF7F1D1D),
+    onErrorContainer = Color(0xFFFEE2E2)
 )
 
 @Composable
@@ -124,18 +141,15 @@ fun MyApplicationTheme(
     val isArabic = activeLanguage == "ar"
     val fontFamily = getFontFamilyByName(fontFamilyName, activeLanguage)
 
-    val effectiveScaleName = if (!isArabic && (fontSizeScaleName == "small" || fontSizeScaleName.isBlank())) {
-        "small"
-    } else {
-        fontSizeScaleName
-    }
+    val effectiveScaleName = fontSizeScaleName.ifBlank { "small" }
     val baseMultiplier = when (effectiveScaleName) {
-        "small" -> 0.85f
-        "large" -> 1.2f
+        "small" -> 0.88f
+        "large" -> 1.15f
         else -> 1.0f
     }
-    val multiplier = if (isArabic) baseMultiplier * 1.12f else baseMultiplier
-    val lineMultiplier = if (isArabic) 1.25f else 1.0f
+    // Proportions typographiques et interlignage strictement identiques entre Français et Arabe
+    val multiplier = baseMultiplier
+    val lineMultiplier = 1.0f
 
     val displayWeight = if (isFontBold) FontWeight.Bold else FontWeight.Normal
     val headlineWeight = if (isFontBold) FontWeight.Bold else FontWeight.Normal

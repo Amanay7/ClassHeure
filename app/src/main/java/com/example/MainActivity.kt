@@ -43,6 +43,8 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistryOwner
@@ -449,7 +451,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
                   }
                 }
 
-                // Centered large, prominent Logo + Subtitle (clic restreint strictement au centre du logo)
+                // Centered large, prominent Logo (design identique en Français et en Arabe)
                 Column(
                   horizontalAlignment = Alignment.CenterHorizontally,
                   verticalArrangement = Arrangement.Center,
@@ -466,23 +468,8 @@ fun MainAppLayout(viewModel: AppViewModel) {
                     Image(
                       painter = painterResource(id = R.drawable.ic_home_logo),
                       contentDescription = "ClassHeure",
-                      modifier = Modifier.height(60.dp),
+                      modifier = Modifier.height(64.dp),
                       contentScale = ContentScale.Fit
-                    )
-                  }
-                  if (currentSettings.activeLanguage == "ar") {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                      text = "المساعد الرقمي للأستاذ",
-                      style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.35.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
-                      ),
-                      maxLines = 1,
-                      softWrap = false,
-                      textAlign = TextAlign.Center
                     )
                   }
                 }
@@ -557,7 +544,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
           .fillMaxWidth()
           .navigationBarsPadding(),
         shape = androidx.compose.ui.graphics.RectangleShape,
-        color = if (isDarkTheme) Color(0xFF18181C) else Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp
       ) {
         Column(
@@ -565,7 +552,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
           horizontalAlignment = Alignment.CenterHorizontally
         ) {
           HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDarkTheme) 0.35f else 0.65f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDarkTheme) 0.45f else 0.65f),
             thickness = 1.dp
           )
           NavigationBar(
@@ -576,8 +563,8 @@ fun MainAppLayout(viewModel: AppViewModel) {
               .widthIn(max = 680.dp)
               .height(62.dp)
           ) {
-        val studentsColor = Color(0xFF059669)
-        val studentsBg = if (isDarkTheme) Color(0xFF064E3B).copy(alpha = 0.4f) else Color(0xFFD1FAE5)
+        val studentsColor = if (isDarkTheme) Color(0xFF34D399) else Color(0xFF059669)
+        val studentsBg = if (isDarkTheme) Color(0xFF065F46).copy(alpha = 0.45f) else Color(0xFFD1FAE5)
         val isStudentsSelected = currentRouteInner == "students"
         NavigationBarItem(
           icon = {
@@ -585,7 +572,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
               modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isStudentsSelected) studentsColor else studentsBg),
+                .background(if (isStudentsSelected) Color(0xFF059669) else studentsBg),
               contentAlignment = Alignment.Center
             ) {
               Icon(
@@ -624,8 +611,8 @@ fun MainAppLayout(viewModel: AppViewModel) {
           }
         )
 
-        val gradebookColor = Color(0xFFD97706)
-        val gradebookBg = if (isDarkTheme) Color(0xFF78350F).copy(alpha = 0.4f) else Color(0xFFFEF3C7)
+        val gradebookColor = if (isDarkTheme) Color(0xFFFBBF24) else Color(0xFFD97706)
+        val gradebookBg = if (isDarkTheme) Color(0xFF78350F).copy(alpha = 0.45f) else Color(0xFFFEF3C7)
         val isGradebookSelected = currentRouteInner == "gradebook"
         NavigationBarItem(
           icon = {
@@ -633,7 +620,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
               modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isGradebookSelected) gradebookColor else gradebookBg),
+                .background(if (isGradebookSelected) Color(0xFFD97706) else gradebookBg),
               contentAlignment = Alignment.Center
             ) {
               Icon(
@@ -672,7 +659,6 @@ fun MainAppLayout(viewModel: AppViewModel) {
           }
         )
 
-        val homeColor = Color(0xFF2563EB)
         val isHomeSelected = currentRouteInner == "home"
         NavigationBarItem(
           icon = {
@@ -686,7 +672,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
                     Brush.verticalGradient(listOf(Color(0xFF3B82F6), Color(0xFF1D4ED8)))
                   } else {
                     Brush.verticalGradient(
-                      if (isDarkTheme) listOf(Color(0xFF1E40AF), Color(0xFF172554))
+                      if (isDarkTheme) listOf(Color(0xFF2563EB), Color(0xFF1E3A8A))
                       else listOf(Color(0xFF60A5FA), Color(0xFF2563EB))
                     )
                   }
@@ -734,8 +720,8 @@ fun MainAppLayout(viewModel: AppViewModel) {
           }
         )
 
-        val journalColor = Color(0xFF7C3AED)
-        val journalBg = if (isDarkTheme) Color(0xFF4C1D95).copy(alpha = 0.4f) else Color(0xFFF3E8FF)
+        val journalColor = if (isDarkTheme) Color(0xFFC084FC) else Color(0xFF7C3AED)
+        val journalBg = if (isDarkTheme) Color(0xFF4C1D95).copy(alpha = 0.45f) else Color(0xFFF3E8FF)
         val isJournalSelected = currentRouteInner == "journal"
         NavigationBarItem(
           icon = {
@@ -743,7 +729,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
               modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isJournalSelected) journalColor else journalBg),
+                .background(if (isJournalSelected) Color(0xFF7C3AED) else journalBg),
               contentAlignment = Alignment.Center
             ) {
               Icon(
@@ -782,8 +768,8 @@ fun MainAppLayout(viewModel: AppViewModel) {
           }
         )
 
-        val timetablesColor = Color(0xFFE11D48)
-        val timetablesBg = if (isDarkTheme) Color(0xFF881337).copy(alpha = 0.4f) else Color(0xFFFFE4E6)
+        val timetablesColor = if (isDarkTheme) Color(0xFFFB7185) else Color(0xFFE11D48)
+        val timetablesBg = if (isDarkTheme) Color(0xFF881337).copy(alpha = 0.45f) else Color(0xFFFFE4E6)
         val isTimetablesSelected = currentRouteInner == "timetables"
         NavigationBarItem(
           icon = {
@@ -791,7 +777,7 @@ fun MainAppLayout(viewModel: AppViewModel) {
               modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isTimetablesSelected) timetablesColor else timetablesBg),
+                .background(if (isTimetablesSelected) Color(0xFFE11D48) else timetablesBg),
               contentAlignment = Alignment.Center
             ) {
               Icon(
@@ -839,10 +825,10 @@ fun MainAppLayout(viewModel: AppViewModel) {
         navController = navController,
         startDestination = "home",
         modifier = Modifier.padding(innerPadding),
-        enterTransition = { fadeIn(animationSpec = tween(70)) },
-        exitTransition = { fadeOut(animationSpec = tween(70)) },
-        popEnterTransition = { fadeIn(animationSpec = tween(70)) },
-        popExitTransition = { fadeOut(animationSpec = tween(70)) }
+        enterTransition = { fadeIn(animationSpec = tween(140, easing = FastOutSlowInEasing)) },
+        exitTransition = { fadeOut(animationSpec = tween(110, easing = FastOutLinearInEasing)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(140, easing = FastOutSlowInEasing)) },
+        popExitTransition = { fadeOut(animationSpec = tween(110, easing = FastOutLinearInEasing)) }
       ) {
         composable("home") {
           HomeScreen(viewModel = viewModel) { route ->

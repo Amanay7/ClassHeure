@@ -30,10 +30,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.ui.theme.OffWhite
 
+import androidx.compose.ui.draw.drawWithCache
+
 /**
  * Splendid Material 3 Expressive Ambient Background.
  * Renders an ultra-clean, serene canvas with a subtle, dynamic tonal aura
- * that harmonizes gracefully with the active Material You color palette (Marine, Emerald, Amethyst, etc.).
+ * that harmonizes gracefully with the active Material You color palette.
  */
 @Composable
 fun MaterialExpressiveBackground(
@@ -44,93 +46,72 @@ fun MaterialExpressiveBackground(
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-
-            if (isLight) {
-                // Base background: Pristine, airy Material You canvas
-                drawRect(
-                    brush = Brush.verticalGradient(
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .drawWithCache {
+                val width = size.width
+                val height = size.height
+                val baseBrush = if (isLight) {
+                    Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFF9FAFC),
-                            Color(0xFFF3F5F9),
-                            Color(0xFFEDF0F6)
+                            Color(0xFFF8FAFC),
+                            Color(0xFFF1F5F9),
+                            Color(0xFFEFF3F8)
                         )
                     )
-                )
-
-                // Very subtle top-right tonal aura (Material You dynamic accent)
-                drawCircle(
-                    brush = Brush.radialGradient(
+                } else {
+                    Brush.verticalGradient(
                         colors = listOf(
-                            primaryColor.copy(alpha = 0.06f),
-                            primaryColor.copy(alpha = 0.02f),
-                            Color.Transparent
-                        ),
-                        center = Offset(width * 0.90f, height * 0.08f),
-                        radius = width * 0.75f
-                    ),
-                    center = Offset(width * 0.90f, height * 0.08f),
-                    radius = width * 0.75f
-                )
-
-                // Gentle center-left tonal warmth
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            tertiaryColor.copy(alpha = 0.05f),
-                            Color.Transparent
-                        ),
-                        center = Offset(width * 0.06f, height * 0.45f),
-                        radius = width * 0.65f
-                    ),
-                    center = Offset(width * 0.06f, height * 0.45f),
-                    radius = width * 0.65f
-                )
-            } else {
-                // Base background: Deep, luxurious OLED Material 3 dark surface
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C101C),
+                            Color(0xFF0B1120),
                             Color(0xFF0F172A),
                             Color(0xFF090D17)
                         )
                     )
-                )
-
-                // Subtle top tonal glow for dark theme
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            primaryColor.copy(alpha = 0.12f),
+                }
+                val topAuraCenter = Offset(width * 0.88f, height * 0.08f)
+                val topAuraRadius = (width * 0.78f).coerceAtLeast(1f)
+                val topAuraBrush = Brush.radialGradient(
+                    colors = if (isLight) {
+                        listOf(
+                            primaryColor.copy(alpha = 0.06f),
+                            primaryColor.copy(alpha = 0.02f),
+                            Color.Transparent
+                        )
+                    } else {
+                        listOf(
+                            primaryColor.copy(alpha = 0.11f),
                             primaryColor.copy(alpha = 0.03f),
                             Color.Transparent
-                        ),
-                        center = Offset(width * 0.85f, height * 0.10f),
-                        radius = width * 0.80f
-                    ),
-                    center = Offset(width * 0.85f, height * 0.10f),
-                    radius = width * 0.80f
+                        )
+                    },
+                    center = topAuraCenter,
+                    radius = topAuraRadius
                 )
-
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            tertiaryColor.copy(alpha = 0.08f),
+                val midAuraCenter = Offset(width * 0.08f, height * 0.48f)
+                val midAuraRadius = (width * 0.68f).coerceAtLeast(1f)
+                val midAuraBrush = Brush.radialGradient(
+                    colors = if (isLight) {
+                        listOf(
+                            tertiaryColor.copy(alpha = 0.045f),
                             Color.Transparent
-                        ),
-                        center = Offset(width * 0.08f, height * 0.50f),
-                        radius = width * 0.70f
-                    ),
-                    center = Offset(width * 0.08f, height * 0.50f),
-                    radius = width * 0.70f
+                        )
+                    } else {
+                        listOf(
+                            tertiaryColor.copy(alpha = 0.07f),
+                            Color.Transparent
+                        )
+                    },
+                    center = midAuraCenter,
+                    radius = midAuraRadius
                 )
+                onDrawBehind {
+                    drawRect(brush = baseBrush)
+                    drawCircle(brush = topAuraBrush, center = topAuraCenter, radius = topAuraRadius)
+                    drawCircle(brush = midAuraBrush, center = midAuraCenter, radius = midAuraRadius)
+                }
             }
-        }
-
+    ) {
         content()
     }
 }
@@ -147,16 +128,16 @@ fun GlassmorphicBackground(
 }
 
 /**
- * Splendid iOS 27 Spatial Glass Card with sculpted squircle geometry, 3D multi-layered depth,
- * specular hairline reflections, and authentic tactile feedback.
+ * Spatial Glass Card with sculpted geometry, refined elevation,
+ * cached specular hairline reflections, and smooth scrolling performance.
  */
 @Composable
 fun MaterialExpressiveCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(22.dp),
-    elevation: Dp = 3.5.dp,
+    shape: Shape = RoundedCornerShape(20.dp),
+    elevation: Dp = 2.5.dp,
     onClick: (() -> Unit)? = null,
-    borderWidth: Dp = 1.2.dp,
+    borderWidth: Dp = 1.dp,
     glassAlpha: Float = 1.0f,
     tintColor: Color? = null,
     tintAlpha: Float? = null,
@@ -164,66 +145,76 @@ fun MaterialExpressiveCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val isLight = MaterialTheme.colorScheme.background == OffWhite || MaterialTheme.colorScheme.background == Color(0xFFF8FAFC)
-    val baseSurface = if (isLight) Color.White else Color(0xFF1E222D)
+    val baseSurface = if (isLight) Color.White else Color(0xFF131C31)
 
-    // iOS 27 Solid Spatial Container - compositeOver guarantees 100% opacity, pure contrast, and vibrant colors
-    val containerColor = if (tintColor != null) {
-        val effectiveAlpha = tintAlpha ?: if (isLight) 0.10f else 0.18f
-        tintColor.copy(alpha = effectiveAlpha).compositeOver(baseSurface)
-    } else {
-        baseSurface
-    }
-
-    // iOS 27 Specular Prismatic Hairline Border Brush
-    val borderBrush = if (borderColor != null) {
-        Brush.linearGradient(listOf(borderColor, borderColor))
-    } else if (tintColor != null) {
-        if (isLight) {
-            Brush.linearGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.95f),
-                    tintColor.copy(alpha = 0.50f),
-                    tintColor.copy(alpha = 0.25f)
-                )
-            )
+    val containerColor = remember(isLight, tintColor, tintAlpha, baseSurface) {
+        if (tintColor != null) {
+            val effectiveAlpha = tintAlpha ?: if (isLight) 0.08f else 0.16f
+            tintColor.copy(alpha = effectiveAlpha).compositeOver(baseSurface)
         } else {
-            Brush.linearGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.35f),
-                    tintColor.copy(alpha = 0.65f),
-                    Color(0xFF27272A).copy(alpha = 0.40f)
-                )
-            )
-        }
-    } else {
-        if (isLight) {
-            Brush.linearGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.95f),
-                    Color(0xFFCBD5E1).copy(alpha = 0.70f),
-                    Color(0xFFE2E8F0).copy(alpha = 0.50f)
-                )
-            )
-        } else {
-            Brush.linearGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.35f),
-                    Color(0xFF52525B).copy(alpha = 0.40f),
-                    Color(0xFF18181B).copy(alpha = 0.60f)
-                )
-            )
+            baseSurface
         }
     }
 
-    // iOS 27 Multi-layer 3D elevation shadow + surface
+    val borderBrush = remember(isLight, tintColor, borderColor) {
+        if (borderColor != null) {
+            Brush.linearGradient(listOf(borderColor, borderColor))
+        } else if (tintColor != null) {
+            if (isLight) {
+                Brush.linearGradient(
+                    listOf(
+                        tintColor.copy(alpha = 0.38f),
+                        tintColor.copy(alpha = 0.22f)
+                    )
+                )
+            } else {
+                Brush.linearGradient(
+                    listOf(
+                        tintColor.copy(alpha = 0.55f),
+                        tintColor.copy(alpha = 0.28f)
+                    )
+                )
+            }
+        } else {
+            if (isLight) {
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFFE2E8F0),
+                        Color(0xFFCBD5E1).copy(alpha = 0.75f)
+                    )
+                )
+            } else {
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF334155).copy(alpha = 0.85f),
+                        Color(0xFF1E293B).copy(alpha = 0.75f)
+                    )
+                )
+            }
+        }
+    }
+
+    val ambientShadow = remember(isLight, tintColor) {
+        if (tintColor != null) tintColor.copy(alpha = if (isLight) 0.12f else 0.28f)
+        else (if (isLight) Color(0x14000000) else Color(0x45000000))
+    }
+    val spotShadow = remember(isLight, tintColor) {
+        if (tintColor != null) tintColor.copy(alpha = if (isLight) 0.18f else 0.36f)
+        else (if (isLight) Color(0x1C000000) else Color(0x60000000))
+    }
+
     Surface(
         modifier = modifier
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                ambientColor = if (tintColor != null) tintColor.copy(alpha = if (isLight) 0.16f else 0.35f) else (if (isLight) Color(0x1A000000) else Color(0x60000000)),
-                spotColor = if (tintColor != null) tintColor.copy(alpha = if (isLight) 0.24f else 0.45f) else (if (isLight) Color(0x24000000) else Color(0x80000000)),
-                clip = false
+            .then(
+                if (elevation > 0.dp) {
+                    Modifier.shadow(
+                        elevation = elevation,
+                        shape = shape,
+                        ambientColor = ambientShadow,
+                        spotColor = spotShadow,
+                        clip = false
+                    )
+                } else Modifier
             )
             .border(borderWidth, borderBrush, shape),
         shape = shape,
@@ -232,7 +223,6 @@ fun MaterialExpressiveCard(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
                 .then(
                     if (onClick != null) {
                         Modifier.clickable(
@@ -242,24 +232,26 @@ fun MaterialExpressiveCard(
                         )
                     } else Modifier
                 )
-        ) {
-            // Reflet spéculaire supérieur 3D iOS 27
-            Canvas(modifier = Modifier.matchParentSize()) {
-                val w = size.width
-                drawLine(
-                    brush = Brush.horizontalGradient(
+                .drawWithCache {
+                    val w = size.width
+                    val highlightBrush = Brush.horizontalGradient(
                         listOf(
                             Color.Transparent,
-                            (if (isLight) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.25f)),
+                            if (isLight) Color.White.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.18f),
                             Color.Transparent
                         )
-                    ),
-                    start = Offset(w * 0.10f, 1.2f),
-                    end = Offset(w * 0.90f, 1.2f),
-                    strokeWidth = 1.2f
-                )
-            }
-
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawLine(
+                            brush = highlightBrush,
+                            start = Offset(w * 0.12f, 1f),
+                            end = Offset(w * 0.88f, 1f),
+                            strokeWidth = 1f
+                        )
+                    }
+                }
+        ) {
             content()
         }
     }

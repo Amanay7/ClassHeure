@@ -298,8 +298,8 @@ fun AutumnTeacherProfileCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = if (isAr) 10.dp else 12.dp, vertical = if (isAr) 5.dp else 7.dp),
-                verticalArrangement = Arrangement.spacedBy(if (isAr) 2.dp else 3.dp),
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val nameTextColor = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0F265C)
@@ -316,8 +316,8 @@ fun AutumnTeacherProfileCard(
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontSize = if (isAr) 34.sp else 32.sp,
-                        lineHeight = if (isAr) 40.sp else 38.sp,
+                        fontSize = 32.sp,
+                        lineHeight = 38.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.4.sp,
                         modifier = Modifier.fillMaxWidth()
@@ -388,7 +388,7 @@ fun AutumnTeacherProfileCard(
                         color = schoolTextColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.5.sp,
-                        lineHeight = if (isAr) 18.sp else 17.sp,
+                        lineHeight = 17.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center,
