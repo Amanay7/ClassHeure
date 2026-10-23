@@ -1,0 +1,132 @@
+<resources>
+    <string name="app_name">ClassHeure</string>
+    <string name="nav_home">Accueil</string>
+    <string name="nav_students">Classes</string>
+    <string name="nav_gradebook">Carnet</string>
+    <string name="nav_journal">Journal</string>
+    <string name="nav_timetables">Horaires</string>
+    <string name="nav_settings">Paramètres</string>
+    <string name="nav_reminders">Rappels</string>
+    <string name="nav_notes">Notes</string>
+    <string name="nav_documents">Mes documents</string>
+    <string name="nav_attendances">Absences</string>
+    
+    <string name="action_edit">Modifier</string>
+    <string name="action_delete">Supprimer</string>
+    <string name="action_add">Ajouter</string>
+    <string name="action_close">Fermer</string>
+    <string name="action_confirm">Confirmer</string>
+    <string name="action_search">Rechercher…</string>
+    <string name="action_share">Partager</string>
+    <string name="action_export">Exporter</string>
+    <string name="action_import">Importer</string>
+    <string name="action_save">Enregistrer</string>
+    
+    <string name="language_fr">Français</string>
+    <string name="language_ar">العربية</string>
+    <string name="language_changed_toast">Langue modifiée avec succès</string>
+    
+    <plurals name="students_count">
+        <item quantity="one">%d élève</item>
+        <item quantity="other">%d élèves</item>
+    </plurals>
+    <plurals name="classes_count">
+        <item quantity="one">%d classe</item>
+        <item quantity="other">%d classes</item>
+    </plurals>
+    <plurals name="absences_count">
+        <item quantity="one">%d absence</item>
+        <item quantity="other">%d absences</item>
+    </plurals>
+    
+    <string name="home_welcome">Bienvenue dans ClassHeure</string>
+    <string name="home_stats_classes">Classes</string>
+    <string name="home_stats_students">Élèves</string>
+    <string name="home_quick_actions">Outils et documents</string>
+    <string name="home_today_lessons">Cours de la journée</string>
+    <string name="home_no_lessons">Aucun cours planifié aujourd\'hui.</string>
+    
+    <string name="class_list">Liste des Classes</string>
+    <string name="add_class">Ajouter une classe</string>
+    <string name="edit_class">Modifier la classe</string>
+    <string name="delete_class">Supprimer la classe</string>
+    <string name="add_student">Ajouter un élève</string>
+    <string name="edit_student">Modifier l\'élève</string>
+    <string name="delete_student">Supprimer l\'élève</string>
+    <string name="import_csv">Importer CSV</string>
+    <string name="export_csv">Exporter CSV</string>
+    <string name="first_name">Prénom</string>
+    <string name="last_name">Nom</string>
+    <string name="birth_date">Date de naissance (jj-mm-aaaa)</string>
+    <string name="gender">Sexe</string>
+    <string name="male">Garçon</string>
+    <string name="female">Fille</string>
+    <string name="class_name_placeholder">Ex: 6ème Année A</string>
+    
+    <string name="term_1">1er Trimestre</string>
+    <string name="term_2">2e Trimestre</string>
+    <string name="term_3">3e Trimestre</string>
+    <string name="evaluation_participation">Participation</string>
+    <string name="evaluation_discipline">Discipline</string>
+    <string name="evaluation_assiduity">Assiduité</string>
+    <string name="evaluation_notebook">Cahier</string>
+    <string name="evaluation_project">Projet</string>
+    <string name="exams">Devoirs (Modulable)</string>
+    <string name="final_exam">Composition</string>
+    <string name="coefficients_and_formulas">Coefficients &amp; Formules</string>
+    <string name="save_grades">Enregistrer les Notes</string>
+    <string name="save">Enregistrer</string>
+    <string name="cancel">Annuler</string>
+    <string name="generate_report_card">Bulletin PDF</string>
+    <string name="all_classes">Toutes les classes</string>
+    <string name="select_class">Sélection de la classe</string>
+    <string name="about_title">À propos</string>
+    <string name="about_subtitle">Informations sur l\'application</string>
+    <string name="about_author">Conception : Fatah YAYA, enseignant</string>
+    <string name="about_school">Lycée GHERBI Mohand Chérif - Sidi Aïch</string>
+    <string name="about_email">fatah06@gmail.com</string>
+    
+    <string name="journal_entry">Cahier Journal</string>
+    <string name="add_entry">Nouvelle entrée</string>
+    <string name="date">Date</string>
+    <string name="time_slot">Créneau horaire</string>
+    <string name="course_subject">Matière</string>
+    <string name="objectives">Objectifs pédagogiques</string>
+    <string name="observations">Observations / Remarques</string>
+    <string name="gemini_summary">Résumé Hebdomadaire automatique (Gemini)</string>
+    <string name="generate_summary">Générer le résumé par l\'IA</string>
+    <string name="audio_memo">Note Vocale</string>
+    <string name="photo_memo">Photo / Document</string>
+    
+    <string name="timetable_class">Emploi du temps par classe</string>
+    <string name="timetable_teacher">Emploi du temps enseignant consolidé</string>
+    <string name="add_slot">Ajouter un créneau</string>
+    <string name="classroom">Salle</string>
+    <string name="color">Couleur</string>
+    <string name="subject">Matière</string>
+    <string name="day_sunday">Dimanche</string>
+    <string name="day_monday">Lundi</string>
+    <string name="day_tuesday">Mardi</string>
+    <string name="day_wednesday">Mercredi</string>
+    <string name="day_thursday">Jeudi</string>
+    <string name="day_friday">Vendredi</string>
+    <string name="day_saturday">Samedi</string>
+    
+    <string name="teacher_name">Nom de l\'enseignant</string>
+    <string name="school_name">Nom de l\'établissement</string>
+    <string name="language">Langue de l\'interface</string>
+    <string name="theme">Thème de l\'application</string>
+    <string name="font_family">Police de caractères</string>
+    <string name="font_size">Taille des caractères</string>
+    <string name="pin_lock">Verrouillage par code PIN</string>
+    <string name="pin_code">Code PIN (4 chiffres)</string>
+    <string name="backup_restore">Sauvegarde et Restauration</string>
+    <string name="backup_export">Exporter sauvegarde chiffrée</string>
+    <string name="backup_import">Importer une sauvegarde</string>
+    <string name="save_settings">Enregistrer les Paramètres</string>
+    
+    <string name="exit_dialog_title">Fermeture de l\'application</string>
+    <string name="confirm_exit">Voulez-vous vraiment quitter l\'application ClassHeure ?</string>
+    <string name="exit_yes">Quitter</string>
+    <string name="exit_no">Annuler</string>
+</resources>

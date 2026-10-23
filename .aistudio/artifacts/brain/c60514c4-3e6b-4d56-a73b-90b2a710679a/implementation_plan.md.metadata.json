@@ -1,0 +1,6 @@
+{
+  "summary":  "Plan complet d'analyse et de reconstruction de l'application Android ClassHeure en Kotlin, Jetpack Compose et Clean Architecture, couvrant : (1) le résumé exhaustif des fonctionnalités détectées dans l'archive, (2) l'audit des erreurs, points faibles et incohérences techniques de l'ancienne version, (3) l'architecture cible modulaire en couches (Data, Domain, Presentation), et (4) la feuille de route étape par étape pour reconstruire l'application sans aucune perte fonctionnelle.",
+  "updatedAt":  "2026-10-23T06:46:43.207043650Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

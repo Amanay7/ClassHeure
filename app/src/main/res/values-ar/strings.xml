@@ -1,0 +1,147 @@
+<resources>
+    <string name="app_name">ClassHeure</string>
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_students">الأفواج</string>
+    <string name="nav_gradebook">التنقيط</string>
+    <string name="nav_journal">اليومية</string>
+    <string name="nav_timetables">مواقيت</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="nav_reminders">التذكيرات</string>
+    <string name="nav_notes">الملاحظات</string>
+    <string name="nav_documents">وثائقي</string>
+    <string name="nav_attendances">دفتر الغيابات</string>
+    
+    <string name="action_edit">تعديل</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_add">إضافة</string>
+    <string name="action_close">إغلاق</string>
+    <string name="action_confirm">تأكيد</string>
+    <string name="action_search">بحث…</string>
+    <string name="action_share">مشاركة</string>
+    <string name="action_export">تصدير</string>
+    <string name="action_import">استيراد</string>
+    <string name="action_save">حفظ</string>
+    
+    <string name="language_fr">الفرنسية</string>
+    <string name="language_ar">العربية</string>
+    <string name="language_changed_toast">تم تغيير لغة التطبيق بنجاح</string>
+    
+    <!-- صيغ الجمع الست باللغة العربية (6 Arabic Plural Forms) -->
+    <plurals name="students_count">
+        <item quantity="zero">لا يوجد تلاميذ</item>
+        <item quantity="one">تلميذ واحد</item>
+        <item quantity="two">تلميذان</item>
+        <item quantity="few">%d تلاميذ</item>
+        <item quantity="many">%d تلميذاً</item>
+        <item quantity="other">%d تلميذ</item>
+    </plurals>
+    
+    <plurals name="classes_count">
+        <item quantity="zero">لا توجد أفواج</item>
+        <item quantity="one">فوج واحد</item>
+        <item quantity="two">فوجان</item>
+        <item quantity="few">%d أفواج</item>
+        <item quantity="many">%d فوجاً</item>
+        <item quantity="other">%d فوج</item>
+    </plurals>
+    
+    <plurals name="absences_count">
+        <item quantity="zero">لا توجد غيابات</item>
+        <item quantity="one">غياب واحد</item>
+        <item quantity="two">غيابان</item>
+        <item quantity="few">%d غيابات</item>
+        <item quantity="many">%d غياباً</item>
+        <item quantity="other">%d غياب</item>
+    </plurals>
+    
+    <string name="home_welcome">مرحباً بك في ClassHeure</string>
+    <string name="home_stats_classes">الأفواج</string>
+    <string name="home_stats_students">التلاميذ</string>
+    <string name="home_quick_actions">أدوات و وثائق</string>
+    <string name="home_today_lessons">حصص اليوم</string>
+    <string name="home_no_lessons">لا توجد حصص مبرمجة اليوم.</string>
+    
+    <string name="class_list">قائمة الأفواج</string>
+    <string name="add_class">إضافة فوج</string>
+    <string name="edit_class">تعديل الفوج</string>
+    <string name="delete_class">حذف الفوج</string>
+    <string name="add_student">إضافة تلميذ</string>
+    <string name="edit_student">تعديل بيانات التلميذ</string>
+    <string name="delete_student">حذف التلميذ</string>
+    <string name="import_csv">استيراد ملف CSV</string>
+    <string name="export_csv">تصدير ملف CSV</string>
+    <string name="first_name">الاسم</string>
+    <string name="last_name">اللقب</string>
+    <string name="birth_date">تاريخ الميلاد (يوم-شهر-سنة)</string>
+    <string name="gender">الجنس</string>
+    <string name="male">ذكر</string>
+    <string name="female">أنثى</string>
+    <string name="class_name_placeholder">مثال: السنة الأولى ج م ع ت 1</string>
+    
+    <string name="term_1">الفصل الأول</string>
+    <string name="term_2">الفصل الثاني</string>
+    <string name="term_3">الفصل الثالث</string>
+    <string name="evaluation_participation">المشاركة</string>
+    <string name="evaluation_discipline">الانضباط</string>
+    <string name="evaluation_assiduity">المواظبة</string>
+    <string name="evaluation_notebook">كراس الدروس</string>
+    <string name="evaluation_project">المشروع</string>
+    <string name="exams">الفروض (قابلة للتعديل)</string>
+    <string name="final_exam">الاختبار</string>
+    <string name="coefficients_and_formulas">المعاملات والصيغ</string>
+    <string name="save_grades">حفظ النقاط</string>
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+    <string name="generate_report_card">كشف النقاط PDF</string>
+    <string name="all_classes">جميع الأفواج</string>
+    <string name="select_class">اختيار الفوج</string>
+    <string name="about_title">حول التطبيق</string>
+    <string name="about_subtitle">معلومات عن التطبيق</string>
+    <string name="about_author">تصميم وإعداد: الأستاذ فاتح يايا (أستاذ اللغة الأمازيغية)</string>
+    <string name="about_school">ثانوية غربي محند شريف - سيدي عيش</string>
+    <string name="about_email">fatah06@gmail.com</string>
+    
+    <string name="journal_entry">دفتر النصوص</string>
+    <string name="add_entry">إضافة درس جديد</string>
+    <string name="date">التاريخ</string>
+    <string name="time_slot">التوقيت</string>
+    <string name="course_subject">المادة</string>
+    <string name="objectives">الأهداف التعلمية</string>
+    <string name="observations">ملاحظات وتوجيهات</string>
+    <string name="gemini_summary">الملخص الأسبوعي التلقائي (Gemini)</string>
+    <string name="generate_summary">توليد التلخيص بالذكاء الاصطناعي</string>
+    <string name="audio_memo">تسجيل صوتي</string>
+    <string name="photo_memo">صورة / وثيقة</string>
+    
+    <string name="timetable_class">جدول توقيت الفوج</string>
+    <string name="timetable_teacher">جدول التوقيت الموحد للأستاذ</string>
+    <string name="add_slot">إضافة حصة</string>
+    <string name="classroom">القاعة</string>
+    <string name="color">اللون</string>
+    <string name="subject">المادة</string>
+    <string name="day_sunday">الأحد</string>
+    <string name="day_monday">الإثنين</string>
+    <string name="day_tuesday">الثلاثاء</string>
+    <string name="day_wednesday">الأربعاء</string>
+    <string name="day_thursday">الخميس</string>
+    <string name="day_friday">الجمعة</string>
+    <string name="day_saturday">السبت</string>
+    
+    <string name="teacher_name">اسم الأستاذ</string>
+    <string name="school_name">اسم المؤسسة التعليمية</string>
+    <string name="language">لغة الواجهة</string>
+    <string name="theme">مظهر التطبيق</string>
+    <string name="font_family">نوع الخط</string>
+    <string name="font_size">حجم الخط</string>
+    <string name="pin_lock">القفل برمز PIN</string>
+    <string name="pin_code">رمز PIN (4 أرقام)</string>
+    <string name="backup_restore">النسخ الاحتياطي والاستعادة</string>
+    <string name="backup_export">تصدير نسخة احتياطية مشفرة</string>
+    <string name="backup_import">استيراد نسخة احتياطية</string>
+    <string name="save_settings">حفظ الإعدادات</string>
+    
+    <string name="exit_dialog_title">الخروج من التطبيق</string>
+    <string name="confirm_exit">هل تريد حقاً الخروج من تطبيق ClassHeure؟</string>
+    <string name="exit_yes">خروج</string>
+    <string name="exit_no">إلغاء</string>
+</resources>

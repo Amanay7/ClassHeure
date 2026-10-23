@@ -1,0 +1,6 @@
+{
+  "name": "ClassHeure",
+  "description": "Carnet de bord pédagogique tout-en-un bilingue (Français/Arabe) pour enseignants de lycée avec design spatial iOS 27.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
