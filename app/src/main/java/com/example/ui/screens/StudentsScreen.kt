@@ -106,6 +106,68 @@ fun StudentsScreen(viewModel: AppViewModel) {
     val activeClass = classes.find { it.id == selectedClassId }
     val isAr = Tr.isArabic()
 
+    var studentsForClassPdfExport by remember { mutableStateOf<List<StudentEntity>>(emptyList()) }
+    var groupSubtitleForClassPdfExport by remember { mutableStateOf("") }
+
+    val currentTargetClass by rememberUpdatedState(activeClassForStudentsList ?: activeClass)
+    val currentStudentsList by rememberUpdatedState(students)
+    val currentGradesList by rememberUpdatedState(grades)
+    val currentExportStudents by rememberUpdatedState(studentsForClassPdfExport)
+    val currentExportGroupSubtitle by rememberUpdatedState(groupSubtitleForClassPdfExport)
+    val currentSettingsSnapshot by rememberUpdatedState(currentSettings)
+
+    val planPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        uri?.let {
+            val targetCls = currentTargetClass
+            if (targetCls != null) {
+                viewModel.exportSingleSeatingPlanPdf(
+                    context = context,
+                    targetUri = it,
+                    className = targetCls.name,
+                    studentsList = currentStudentsList
+                )
+            }
+        }
+    }
+    val classListPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        uri?.let {
+            val targetCls = currentTargetClass
+            if (targetCls != null) {
+                val listToExport = if (currentExportStudents.isNotEmpty()) currentExportStudents else currentStudentsList
+                viewModel.exportSingleClassListPdf(
+                    context = context,
+                    targetUri = it,
+                    className = targetCls.name,
+                    studentsList = listToExport,
+                    groupSubtitle = currentExportGroupSubtitle
+                )
+            }
+        }
+    }
+    val statsPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        uri?.let {
+            val targetCls = currentTargetClass
+            if (targetCls != null) {
+                val classCoeff = targetCls.subjectCoefficient ?: currentSettingsSnapshot?.subjectCoefficient ?: 3
+                viewModel.exportClassStatisticsPdf(
+                    context = context,
+                    targetUri = it,
+                    className = targetCls.name,
+                    studentsList = currentStudentsList,
+                    gradesList = currentGradesList,
+                    subjectCoefficient = classCoeff,
+                    isPrimary = false
+                )
+            }
+        }
+    }
+
     AdaptiveScreenContainer(maxWidth = 900.dp) {
         Column(
             modifier = Modifier
@@ -258,8 +320,6 @@ fun StudentsScreen(viewModel: AppViewModel) {
                 var showFiltersPanel by remember { mutableStateOf(false) }
                 var studentToChangePosition by remember { mutableStateOf<Pair<StudentEntity, Int>?>(null) }
                 var showExportClassListPdfDialog by remember { mutableStateOf(false) }
-                var studentsForClassPdfExport by remember { mutableStateOf<List<StudentEntity>>(emptyList()) }
-                var groupSubtitleForClassPdfExport by remember { mutableStateOf("") }
 
                 val presentAges = remember(students) {
                     val computed = students.mapNotNull { calculateAge(it.birthDate) }
@@ -368,55 +428,6 @@ fun StudentsScreen(viewModel: AppViewModel) {
                     }
 
                     sortedList
-                }
-                val planPdfLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.CreateDocument("application/pdf")
-                ) { uri: Uri? ->
-                    uri?.let {
-                        if (activeClass != null) {
-                            viewModel.exportSingleSeatingPlanPdf(
-                                context = context,
-                                targetUri = it,
-                                className = activeClass.name,
-                                studentsList = students
-                            )
-                        }
-                    }
-                }
-                val classListPdfLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.CreateDocument("application/pdf")
-                ) { uri: Uri? ->
-                    uri?.let {
-                        if (activeClass != null) {
-                            val listToExport = if (studentsForClassPdfExport.isNotEmpty()) studentsForClassPdfExport else students
-                            viewModel.exportSingleClassListPdf(
-                                context = context,
-                                targetUri = it,
-                                className = activeClass.name,
-                                studentsList = listToExport,
-                                groupSubtitle = groupSubtitleForClassPdfExport
-                            )
-                        }
-                    }
-                }
-
-                val statsPdfLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.CreateDocument("application/pdf")
-                ) { uri: Uri? ->
-                    uri?.let {
-                        if (activeClass != null) {
-                            val classCoeff = activeClass.subjectCoefficient ?: currentSettings?.subjectCoefficient ?: 3
-                            viewModel.exportClassStatisticsPdf(
-                                context = context,
-                                targetUri = it,
-                                className = activeClass.name,
-                                studentsList = students,
-                                gradesList = grades,
-                                subjectCoefficient = classCoeff,
-                                isPrimary = false
-                            )
-                        }
-                    }
                 }
 
                 val classGroups = remember(students) {

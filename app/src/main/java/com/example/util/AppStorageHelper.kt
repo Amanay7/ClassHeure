@@ -42,32 +42,64 @@ object AppStorageHelper {
             return null
         }
 
+        val appContext = context.applicationContext ?: context
         val cleanName = fileName.replace("[/\\\\?%*:|\"<>]".toRegex(), "_")
 
-        // 1. Essai d'écriture directe par fichier (Android <= 10 ou permissions directes)
+        // 0. Copie de sécurité garantie dans le stockage externe propre à l'application
+        var appExternalUri: Uri? = null
+        try {
+            val extDocs = appContext.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            if (extDocs != null) {
+                val privateFolder = File(extDocs, FOLDER_NAME)
+                if (!privateFolder.exists()) privateFolder.mkdirs()
+                val backupFile = File(privateFolder, cleanName)
+                FileOutputStream(backupFile).use { fos ->
+                    fos.write(data)
+                    fos.flush()
+                    try { fos.fd.sync() } catch (_: Exception) {}
+                }
+                if (backupFile.exists() && backupFile.length() > 0) {
+                    appExternalUri = Uri.fromFile(backupFile)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Sauvegarde dans externalFilesDir ignorée : ${e.message}")
+        }
+
+        // 1. Essai d'écriture directe par fichier (Android <= 9 ou si accessible sans conflit SAF)
         try {
             val publicDocs = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
             val appFolder = File(publicDocs, FOLDER_NAME)
             if (!appFolder.exists()) {
                 appFolder.mkdirs()
             }
-            if (appFolder.exists() && appFolder.canWrite()) {
-                val targetFile = File(appFolder, cleanName)
-                if (targetFile.exists()) {
-                    targetFile.delete()
-                }
+            val targetFile = File(appFolder, cleanName)
+            // Si le fichier vient tout juste d'être écrit par SAF (CreateDocument) avec la bonne taille, ne jamais l'écraser ni le supprimer !
+            if (targetFile.exists() && targetFile.length() == data.size.toLong() &&
+                (System.currentTimeMillis() - targetFile.lastModified()) < 20_000L
+            ) {
+                MediaScannerConnection.scanFile(
+                    appContext,
+                    arrayOf(targetFile.absolutePath),
+                    arrayOf(mimeType),
+                    null
+                )
+                return Uri.fromFile(targetFile)
+            }
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && appFolder.exists() && appFolder.canWrite()) {
                 FileOutputStream(targetFile).use { fos ->
                     fos.write(data)
                     fos.flush()
+                    try { fos.fd.sync() } catch (_: Exception) {}
                 }
                 if (targetFile.exists() && targetFile.length() > 0) {
                     MediaScannerConnection.scanFile(
-                        context,
+                        appContext,
                         arrayOf(targetFile.absolutePath),
                         arrayOf(mimeType),
                         null
                     )
-                    Log.d(TAG, "Fichier sauvegardé avec succès par File direct : ${targetFile.absolutePath} (${targetFile.length()} octets)")
                     return Uri.fromFile(targetFile)
                 }
             }
@@ -77,10 +109,10 @@ object AppStorageHelper {
 
         // 2. Écriture via MediaStore (Android 10 à 15+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return saveViaMediaStore(context, cleanName, mimeType, data)
+            return saveViaMediaStore(appContext, cleanName, mimeType, data) ?: appExternalUri
         }
 
-        return null
+        return appExternalUri
     }
 
     /** Alias de compatibilité */
@@ -116,33 +148,37 @@ object AppStorageHelper {
         val resolver = context.contentResolver
         val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
 
-        // 1. Supprimer toute entrée MediaStore existante portant ce nom dans Documents/MaClasse
-        // pour éviter les doublons avec suffixe (1) et garantir l'écrasement propre
-        try {
-            val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-            val selectionArgs = arrayOf(fileName, "%$RELATIVE_DOCUMENTS_PATH%")
-            resolver.delete(collection, selection, selectionArgs)
-        } catch (e: Exception) {
-            Log.w(TAG, "Suppression ancienne entrée MediaStore ignorée : ${e.message}")
-        }
-
-        // Supprimer également le fichier physique si résiduel
+        // Vérifier si le fichier existe déjà dans Documents/ClassHeure avec des données valides (ex: créé via SAF CreateDocument)
         try {
             val publicDocs = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
             val physicalFile = File(File(publicDocs, FOLDER_NAME), fileName)
-            if (physicalFile.exists()) {
-                physicalFile.delete()
+            if (physicalFile.exists() && physicalFile.length() >= data.size.toLong()) {
+                return Uri.fromFile(physicalFile)
             }
-        } catch (e: Exception) {
-            // Ignorer si Scoped Storage empêche la suppression directe
-        }
+        } catch (_: Exception) {}
 
-        // 2. Préparation des métadonnées avec IS_PENDING = 1
+        // Vérifier dans MediaStore si une entrée non-vide récente existe déjà
+        try {
+            val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
+            val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+            val selectionArgs = arrayOf(fileName, "%$RELATIVE_DOCUMENTS_PATH%")
+            resolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(0)
+                    val existingSize = cursor.getLong(1)
+                    val existingUri = android.content.ContentUris.withAppendedId(collection, id)
+                    if (existingSize == data.size.toLong()) {
+                        return existingUri
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Préparation des métadonnées sans IS_PENDING bloquant
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
             put(MediaStore.MediaColumns.RELATIVE_PATH, "$RELATIVE_DOCUMENTS_PATH/")
-            put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 
         var targetUri: Uri? = null
@@ -152,52 +188,52 @@ object AppStorageHelper {
             Log.w(TAG, "Erreur insertion MediaStore.Files (${e.message})")
         }
 
-        // Fallback spécifique Android 10 (Q) : si Documents/ n'est pas autorisé dans MediaStore.Files,
-        // enregistrer dans MediaStore.Downloads
-        if (targetUri == null && Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+        // Fallback spécifique Android 10 (Q) : MediaStore.Downloads
+        if (targetUri == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 val dlCollection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
                 val dlValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/ClassHeure/")
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
                 targetUri = resolver.insert(dlCollection, dlValues)
             } catch (e: Exception) {
-                Log.e(TAG, "Erreur fallback Downloads sur Android Q : ${e.message}")
+                Log.e(TAG, "Erreur fallback Downloads : ${e.message}")
             }
         }
 
         if (targetUri == null) {
-            Log.e(TAG, "Impossible de créer l'entrée MediaStore pour $fileName")
             return null
         }
 
-        // 3. Écriture intégrale des données dans le flux
+        // Écriture intégrale des données dans le flux avec synchronisation matérielle
         var writeSuccess = false
         try {
-            resolver.openOutputStream(targetUri, "w")?.use { os ->
-                os.write(data)
-                os.flush()
-                writeSuccess = true
+            resolver.openFileDescriptor(targetUri, "w")?.use { pfd ->
+                FileOutputStream(pfd.fileDescriptor).use { fos ->
+                    fos.write(data)
+                    fos.flush()
+                    try { fos.fd.sync() } catch (_: Exception) {}
+                    writeSuccess = true
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Erreur lors de l'écriture des données MediaStore pour $fileName : ${e.message}", e)
+            try {
+                resolver.openOutputStream(targetUri)?.use { os ->
+                    os.write(data)
+                    os.flush()
+                    if (os is FileOutputStream) {
+                        try { os.fd.sync() } catch (_: Exception) {}
+                    }
+                    writeSuccess = true
+                }
+            } catch (e2: Exception) {
+                Log.e(TAG, "Erreur lors de l'écriture des données MediaStore pour $fileName : ${e2.message}", e2)
+            }
         }
 
-        // 4. Finalisation : marquer IS_PENDING = 0 pour rendre le fichier immédiatement visible et lisible
         if (writeSuccess) {
-            try {
-                val updateValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.IS_PENDING, 0)
-                }
-                resolver.update(targetUri, updateValues, null, null)
-            } catch (e: Exception) {
-                Log.w(TAG, "Mise à jour IS_PENDING=0 ignorée : ${e.message}")
-            }
-
-            // Scanner le fichier physique pour garantir la détection immédiate dans les gestionnaires de fichiers
             try {
                 val publicDocs = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
                 val targetFile = File(File(publicDocs, FOLDER_NAME), fileName)
@@ -207,17 +243,13 @@ object AppStorageHelper {
                     arrayOf(mimeType),
                     null
                 )
-            } catch (e: Exception) {
-                // Ignorer
-            }
+            } catch (_: Exception) {}
 
-            Log.d(TAG, "Fichier enregistré via MediaStore avec succès : $fileName ($targetUri, ${data.size} octets)")
             return targetUri
         } else {
-            // Nettoyage en cas d'échec pour éviter de laisser un fichier de 0 octet
             try {
                 resolver.delete(targetUri, null, null)
-            } catch (e: Exception) {}
+            } catch (_: Exception) {}
             return null
         }
     }

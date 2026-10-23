@@ -2055,9 +2055,10 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
     }
 
     private fun autoArchivePdfBytes(context: Context, defaultName: String, pdfBytes: ByteArray) {
+        if (pdfBytes.isEmpty()) return
         try {
             com.example.util.AppStorageHelper.saveFileToClassHeure(
-                context = context,
+                context = context.applicationContext ?: context,
                 fileName = defaultName,
                 mimeType = "application/pdf",
                 data = pdfBytes
@@ -2068,10 +2069,49 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
     }
 
     private fun writeBytesToUri(context: Context, targetUri: Uri, data: ByteArray): Boolean {
+        if (data.isEmpty()) return false
+        val appContext = context.applicationContext ?: context
+        val resolver = appContext.contentResolver
+
+        // 1. Écriture prioritaire via ParcelFileDescriptor avec synchronisation matérielle (fd.sync)
+        for (mode in listOf("wt", "w", "rw")) {
+            try {
+                resolver.openFileDescriptor(targetUri, mode)?.use { pfd ->
+                    FileOutputStream(pfd.fileDescriptor).use { fos ->
+                        try { fos.channel.truncate(0L) } catch (_: Exception) {}
+                        fos.write(data)
+                        fos.flush()
+                        try { fos.fd.sync() } catch (_: Exception) {}
+                    }
+                    return true
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "openFileDescriptor($mode) ignoré pour $targetUri : ${e.message}")
+            }
+        }
+
+        // 2. Fallback via openOutputStream standard sans argument de mode restrictif
+        try {
+            resolver.openOutputStream(targetUri)?.use { os ->
+                os.write(data)
+                os.flush()
+                if (os is FileOutputStream) {
+                    try { os.fd.sync() } catch (_: Exception) {}
+                }
+                return true
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "openOutputStream(uri) ignoré pour $targetUri : ${e.message}")
+        }
+
+        // 3. Dernier fallback avec le contentResolver du contexte local
         return try {
             context.contentResolver.openOutputStream(targetUri, "w")?.use { os ->
                 os.write(data)
                 os.flush()
+                if (os is FileOutputStream) {
+                    try { os.fd.sync() } catch (_: Exception) {}
+                }
                 true
             } ?: false
         } catch (e: Exception) {
@@ -2092,10 +2132,9 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         schoolYear: String? = null
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_tt_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val classesList = allClasses.value
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
                 val targetClass = classesList.find { it.name.equals(className, ignoreCase = true) }
                 val resolvedSchoolYear = when {
                     targetClass != null && targetClass.schoolYear.isNotBlank() -> targetClass.schoolYear
@@ -2113,38 +2152,35 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
                 val effectiveDeleted = if (deletedTimeSlots.isNotEmpty()) deletedTimeSlots else _deletedTimeSlots.value
                 val effectiveCustomSlots = _customTimeSlots.value
 
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateSingleTimetablePdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        className = className,
-                        slotsList = slotsList,
-                        classesList = classesList,
-                        freeDayIndex = if (className.contains("Enseignant", ignoreCase = true)) profile.teacherFreeDay else null,
-                        lunchBreakLabel = lunchBreakLabel,
-                        deletedTimeSlots = effectiveDeleted,
-                        timeSlotReplacements = effectiveReplacements,
-                        customTimeSlots = effectiveCustomSlots,
-                        schoolYear = resolvedSchoolYear,
-                        fontName = profile.activeFont,
-                        context = context
-                    )
-                }
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateSingleTimetablePdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    className = className,
+                    slotsList = slotsList,
+                    classesList = classesList,
+                    freeDayIndex = if (className.contains("Enseignant", ignoreCase = true)) profile.teacherFreeDay else null,
+                    lunchBreakLabel = lunchBreakLabel,
+                    deletedTimeSlots = effectiveDeleted,
+                    timeSlotReplacements = effectiveReplacements,
+                    customTimeSlots = effectiveCustomSlots,
+                    schoolYear = resolvedSchoolYear,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context
+                )
+                val pdfBytes = baos.toByteArray()
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Emploi_du_temps_${className}.pdf", pdfBytes)
-                    _statusMessage.value = "Emploi du temps exporté en PDF !"
+                    _statusMessage.value = if (written) "Emploi du temps exporté en PDF !" else "Emploi du temps enregistré dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2158,44 +2194,40 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         timeSlotReplacements: Map<String, String> = emptyMap()
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_all_tt_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val classesList = allClasses.value
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
                 val effectiveReplacements = if (timeSlotReplacements.isNotEmpty()) timeSlotReplacements else _timeSlotReplacements.value
                 val effectiveDeleted = if (deletedTimeSlots.isNotEmpty()) deletedTimeSlots else _deletedTimeSlots.value
                 val effectiveCustomSlots = _customTimeSlots.value
 
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateAllTimetablesPdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        classesList = classesList,
-                        slotsList = slotsList,
-                        teacherFreeDay = profile.teacherFreeDay,
-                        lunchBreakLabel = lunchBreakLabel,
-                        deletedTimeSlots = effectiveDeleted,
-                        timeSlotReplacements = effectiveReplacements,
-                        customTimeSlots = effectiveCustomSlots,
-                        fontName = profile.activeFont,
-                        context = context
-                    )
-                }
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateAllTimetablesPdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    classesList = classesList,
+                    slotsList = slotsList,
+                    teacherFreeDay = profile.teacherFreeDay,
+                    lunchBreakLabel = lunchBreakLabel,
+                    deletedTimeSlots = effectiveDeleted,
+                    timeSlotReplacements = effectiveReplacements,
+                    customTimeSlots = effectiveCustomSlots,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context
+                )
+                val pdfBytes = baos.toByteArray()
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Tous_les_emplois_du_temps.pdf", pdfBytes)
-                    _statusMessage.value = "Tous les emplois du temps exportés en PDF !"
+                    _statusMessage.value = if (written) "Tous les emplois du temps exportés en PDF !" else "Emplois du temps enregistrés dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2210,42 +2242,38 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         filterSubtitle: String = ""
     ) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_att_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
                 val targetSchoolYear = schoolYear?.ifBlank { profile.currentSchoolYear.ifBlank { "2026/2027" } } ?: profile.currentSchoolYear.ifBlank { "2026/2027" }
                 val targetTeacher = profile.teacherName.ifBlank { "L'enseignant" }
                 val targetSchool = profile.schoolName.ifBlank { "Établissement Scolaire" }
                 val activeFont = profile.activeFont
 
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateAttendanceReportPdf(
-                        context = context,
-                        outputStream = fos,
-                        teacherName = targetTeacher,
-                        schoolName = targetSchool,
-                        className = className,
-                        schoolYear = targetSchoolYear,
-                        attendancesList = attendancesList,
-                        studentsList = studentsList,
-                        taughtSubject = profile.taughtSubject,
-                        fontName = activeFont,
-                        filterSubtitle = filterSubtitle
-                    )
-                }
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateAttendanceReportPdf(
+                    context = context.applicationContext ?: context,
+                    outputStream = baos,
+                    teacherName = targetTeacher,
+                    schoolName = targetSchool,
+                    className = className,
+                    schoolYear = targetSchoolYear,
+                    attendancesList = attendancesList,
+                    studentsList = studentsList,
+                    taughtSubject = profile.taughtSubject,
+                    fontName = activeFont,
+                    filterSubtitle = filterSubtitle
+                )
+                val pdfBytes = baos.toByteArray()
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Registre_Absences_${className}.pdf", pdfBytes)
-                    _statusMessage.value = "Registre des absences exporté en PDF !"
+                    _statusMessage.value = if (written) "Registre des absences exporté en PDF !" else "Registre enregistré dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2258,37 +2286,44 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         gradesList: List<StudentWithGrade>
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_grades_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateSingleGradebookPdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        className = className,
-                        term = term,
-                        gradesList = gradesList,
-                        subjectCoefficient = profile.subjectCoefficient,
-                        fontName = profile.activeFont,
-                        context = context,
-                        isPrimary = false
-                    )
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
+                val targetClass = classesList.find { it.name.equals(className, ignoreCase = true) }
+                val effectiveGrades = if (gradesList.isNotEmpty()) {
+                    gradesList
+                } else if (targetClass != null) {
+                    repository.getStudentsWithGradesForTermList(targetClass.id, term)
+                } else {
+                    emptyList()
                 }
+                val coeff = targetClass?.subjectCoefficient ?: profile.subjectCoefficient
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateSingleGradebookPdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    className = className,
+                    term = term,
+                    gradesList = effectiveGrades,
+                    subjectCoefficient = coeff,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context,
+                    isPrimary = false
+                )
+                val pdfBytes = baos.toByteArray()
+
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Notes_${className}_Trimestre_${term}.pdf", pdfBytes)
-                    _statusMessage.value = "Carnet de notes exporté en PDF !"
+                    _statusMessage.value = if (written) "Carnet de notes exporté en PDF !" else "Carnet de notes enregistré dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2300,34 +2335,40 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         studentsList: List<com.example.data.StudentEntity>
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_seating_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateSingleSeatingPlanPdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        className = className,
-                        studentsList = studentsList,
-                        fontName = profile.activeFont,
-                        context = context
-                    )
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
+                val targetClass = classesList.find { it.name.equals(className, ignoreCase = true) }
+                val effectiveStudents = if (studentsList.isNotEmpty()) {
+                    studentsList
+                } else if (targetClass != null) {
+                    repository.getStudentsByClassList(targetClass.id)
+                } else {
+                    emptyList()
                 }
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateSingleSeatingPlanPdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    className = className,
+                    studentsList = effectiveStudents,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context
+                )
+                val pdfBytes = baos.toByteArray()
+
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Plan_de_classe_${className}.pdf", pdfBytes)
-                    _statusMessage.value = "Plan de classe exporté en PDF !"
+                    _statusMessage.value = if (written) "Plan de classe exporté en PDF !" else "Plan de classe enregistré dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2340,35 +2381,41 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         groupSubtitle: String = ""
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_classlist_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateSingleClassListPdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        className = className,
-                        studentsList = studentsList,
-                        fontName = profile.activeFont,
-                        context = context,
-                        groupSubtitle = groupSubtitle
-                    )
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
+                val targetClass = classesList.find { it.name.equals(className, ignoreCase = true) }
+                val effectiveStudents = if (studentsList.isNotEmpty()) {
+                    studentsList
+                } else if (targetClass != null) {
+                    repository.getStudentsByClassList(targetClass.id)
+                } else {
+                    emptyList()
                 }
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateSingleClassListPdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    className = className,
+                    studentsList = effectiveStudents,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context,
+                    groupSubtitle = groupSubtitle
+                )
+                val pdfBytes = baos.toByteArray()
+
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Liste_eleves_${className}.pdf", pdfBytes)
-                    _statusMessage.value = "Liste de classe exportée en PDF !"
+                    _statusMessage.value = if (written) "Liste de classe exportée en PDF !" else "Liste de classe enregistrée dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2383,10 +2430,9 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         isPrimary: Boolean
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_stats_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val classesList = allClasses.value
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
                 val targetClass = classesList.find { it.name.equals(className, ignoreCase = true) }
                 val resolvedSchoolYear = when {
                     targetClass != null && targetClass.schoolYear.isNotBlank() -> targetClass.schoolYear
@@ -2399,36 +2445,47 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
                         if (m >= 8) "$y/${y + 1}" else "${y - 1}/$y"
                     }
                 }
-
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateClassStatisticsPdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        className = className,
-                        schoolYear = resolvedSchoolYear,
-                        studentsList = studentsList,
-                        gradesList = gradesList,
-                        subjectCoefficient = subjectCoefficient,
-                        isPrimary = isPrimary,
-                        fontName = profile.activeFont,
-                        context = context
-                    )
+                val effectiveStudents = if (studentsList.isNotEmpty()) {
+                    studentsList
+                } else if (targetClass != null) {
+                    repository.getStudentsByClassList(targetClass.id)
+                } else {
+                    emptyList()
+                }
+                val effectiveGrades = if (gradesList.isNotEmpty()) {
+                    gradesList
+                } else if (targetClass != null) {
+                    repository.getStudentsWithGradesForTermList(targetClass.id, _selectedTerm.value)
+                } else {
+                    emptyList()
                 }
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateClassStatisticsPdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    className = className,
+                    schoolYear = resolvedSchoolYear,
+                    studentsList = effectiveStudents,
+                    gradesList = effectiveGrades,
+                    subjectCoefficient = subjectCoefficient,
+                    isPrimary = false,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context
+                )
+                val pdfBytes = baos.toByteArray()
+
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Statistiques_${className}.pdf", pdfBytes)
-                    _statusMessage.value = if (com.example.util.Tr.isArabicLang()) "تم تصدير الإحصائيات إلى PDF بنجاح !" else "Statistiques de la classe exportées en PDF !"
+                    _statusMessage.value = if (com.example.util.Tr.isArabicLang()) "تم تصدير الإحصائيات إلى PDF بنجاح !" else (if (written) "Statistiques de la classe exportées en PDF !" else "Statistiques enregistrées dans Documents/ClassHeure !")
                 } else {
                     _statusMessage.value = if (com.example.util.Tr.isArabicLang()) "خطأ أثناء إنشاء ملف PDF." else "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2441,10 +2498,9 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         entriesList: List<JournalEntryEntity>
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_journal_${System.currentTimeMillis()}.pdf")
             try {
-                val profile = settings.value ?: SettingsEntity()
-                val classesList = allClasses.value
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
+                val classesList = allClasses.value.ifEmpty { repository.allClasses.firstOrNull() ?: emptyList() }
                 val targetClass = classesList.find { it.name.equals(className, ignoreCase = true) }
                 val resolvedSchoolYear = when {
                     targetClass != null && targetClass.schoolYear.isNotBlank() -> targetClass.schoolYear
@@ -2458,34 +2514,31 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
                     }
                 }
 
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateJournalPdf(
-                        outputStream = fos,
-                        schoolName = profile.schoolName,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        className = className,
-                        schoolYear = resolvedSchoolYear,
-                        term = term,
-                        entriesList = entriesList,
-                        classesList = classesList,
-                        fontName = profile.activeFont,
-                        context = context
-                    )
-                }
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateJournalPdf(
+                    outputStream = baos,
+                    schoolName = profile.schoolName,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    className = className,
+                    schoolYear = resolvedSchoolYear,
+                    term = term,
+                    entriesList = entriesList,
+                    classesList = classesList,
+                    fontName = profile.activeFont,
+                    context = context.applicationContext ?: context
+                )
+                val pdfBytes = baos.toByteArray()
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
-                    writeBytesToUri(context, targetUri, pdfBytes)
+                if (success && pdfBytes.isNotEmpty()) {
+                    val written = writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, "Cahier_Journal_${className}_Trimestre_${term}.pdf", pdfBytes)
-                    _statusMessage.value = "Cahier journal exporté en PDF !"
+                    _statusMessage.value = if (written) "Cahier journal exporté en PDF !" else "Cahier journal enregistré dans Documents/ClassHeure !"
                 } else {
                     _statusMessage.value = "Erreur lors de la génération du PDF."
                 }
             } catch (e: Exception) {
                 _statusMessage.value = "Erreur d'écriture : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }
@@ -2500,7 +2553,6 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
         includeJournal: Boolean
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "temp_report_${System.currentTimeMillis()}.pdf")
             try {
                 // Prepare database states synchronously for the exporter
                 val classes = repository.allClasses.firstOrNull() ?: emptyList()
@@ -2527,32 +2579,31 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
                 }
 
                 val fileName = "Rapport_Export.pdf"
-                val profile = settings.value ?: SettingsEntity()
+                val profile = settings.value ?: repository.getSettings() ?: SettingsEntity()
 
-                val success = FileOutputStream(tempFile).use { fos ->
-                    PdfExporter.generateDossierPdf(
-                        context = context,
-                        outputStream = fos,
-                        teacherName = profile.teacherName,
-                        taughtSubject = profile.taughtSubject,
-                        schoolName = profile.schoolName,
-                        classesList = classes,
-                        studentsMap = studentsMap,
-                        gradesMap = gradesMap,
-                        timetableMap = timetableMap,
-                        journalMap = journalMap,
-                        selectedClasses = classesToInclude,
-                        selectedTerms = termsToInclude,
-                        includeGrades = includeGrades,
-                        includeTimetable = includeTimetable,
-                        includeJournal = includeJournal,
-                        subjectCoefficient = profile.subjectCoefficient,
-                        fontName = profile.activeFont
-                    )
-                }
+                val baos = java.io.ByteArrayOutputStream(65536)
+                val success = PdfExporter.generateDossierPdf(
+                    context = context.applicationContext ?: context,
+                    outputStream = baos,
+                    teacherName = profile.teacherName,
+                    taughtSubject = profile.taughtSubject,
+                    schoolName = profile.schoolName,
+                    classesList = classes,
+                    studentsMap = studentsMap,
+                    gradesMap = gradesMap,
+                    timetableMap = timetableMap,
+                    journalMap = journalMap,
+                    selectedClasses = classesToInclude,
+                    selectedTerms = termsToInclude,
+                    includeGrades = includeGrades,
+                    includeTimetable = includeTimetable,
+                    includeJournal = includeJournal,
+                    subjectCoefficient = profile.subjectCoefficient,
+                    fontName = profile.activeFont
+                )
+                val pdfBytes = baos.toByteArray()
 
-                if (success && tempFile.exists() && tempFile.length() > 0) {
-                    val pdfBytes = tempFile.readBytes()
+                if (success && pdfBytes.isNotEmpty()) {
                     writeBytesToUri(context, targetUri, pdfBytes)
                     autoArchivePdfBytes(context, fileName, pdfBytes)
                     _statusMessage.value = "Rapport PDF exporté : $fileName (Documents/ClassHeure)"
@@ -2563,8 +2614,6 @@ class AppViewModel(private val repository: AppRepository) : ViewModel() {
             } catch (e: Exception) {
                 Log.e(TAG, "Exception PDF", e)
                 _statusMessage.value = "Erreur PDF : ${e.localizedMessage}"
-            } finally {
-                tempFile.delete()
             }
         }
     }

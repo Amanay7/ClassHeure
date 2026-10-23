@@ -204,6 +204,17 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
   }
 
+  private var backgroundedAtMillis: Long = 0L
+
+  override fun onStart() {
+    super.onStart()
+    val stopTime = backgroundedAtMillis
+    backgroundedAtMillis = 0L
+    if (stopTime > 0L && (System.currentTimeMillis() - stopTime) > 120_000L) {
+      appViewModel?.setUnlocked(false)
+    }
+  }
+
   override fun onResume() {
     super.onResume()
   }
@@ -211,13 +222,15 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
   override fun onStop() {
     super.onStop()
     if (!isChangingConfigurations) {
-      appViewModel?.setUnlocked(false)
+      backgroundedAtMillis = System.currentTimeMillis()
     }
   }
 
   override fun onDestroy() {
     super.onDestroy()
-    appViewModel?.setUnlocked(false)
+    if (!isChangingConfigurations) {
+      appViewModel?.setUnlocked(false)
+    }
   }
 
   override fun onNewIntent(intent: android.content.Intent) {

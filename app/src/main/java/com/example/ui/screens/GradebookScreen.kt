@@ -240,6 +240,31 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
     }
 
+    val currentActiveClass by rememberUpdatedState(activeClass)
+    val currentSelectedTerm by rememberUpdatedState(selectedTerm)
+    val currentGradesListSnapshot by rememberUpdatedState(gradesList)
+
+    val gradebookPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        uri?.let {
+            val targetCls = currentActiveClass
+            if (targetCls != null) {
+                viewModel.exportSingleGradebookPdf(
+                    context = context,
+                    targetUri = it,
+                    className = targetCls.name,
+                    term = currentSelectedTerm,
+                    gradesList = currentGradesListSnapshot.sortedWith(
+                        compareBy<StudentWithGrade> { if (it.orderIndex > 0) it.orderIndex else Int.MAX_VALUE }
+                            .thenBy { it.lastName.lowercase() }
+                            .thenBy { it.firstName.lowercase() }
+                    )
+                )
+            }
+        }
+    }
+
     AdaptiveScreenContainer(maxWidth = 960.dp) {
 
         LazyColumn(
@@ -312,13 +337,21 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                             shape = RoundedCornerShape(12.dp),
 
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            color = if (isLight) {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            } else {
+                                Color(0xFF1E293B).copy(alpha = 0.90f)
+                            },
 
                             border = BorderStroke(
 
                                 width = 1.dp,
 
-                                color = if (classDropdownExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+                                color = if (classDropdownExpanded) {
+                                    if (isLight) MaterialTheme.colorScheme.primary else Color(0xFF60A5FA)
+                                } else {
+                                    if (isLight) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f) else Color(0xFF475569)
+                                }
 
                             )
 
@@ -360,9 +393,13 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                             .background(
 
-                                                activePalette?.container?.copy(alpha = 0.5f)
-
-                                                    ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                                if (activePalette != null) {
+                                                    if (isLight) activePalette.container.copy(alpha = 0.7f)
+                                                    else activePalette.primary.copy(alpha = 0.25f)
+                                                } else {
+                                                    if (isLight) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                                    else Color(0xFF334155).copy(alpha = 0.6f)
+                                                }
 
                                             ),
 
@@ -382,7 +419,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                 contentDescription = null,
 
-                                                tint = MaterialTheme.colorScheme.outline,
+                                                tint = if (isLight) MaterialTheme.colorScheme.outline else Color(0xFF94A3B8),
 
                                                 modifier = Modifier.size(16.dp)
 
@@ -402,7 +439,11 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                             fontWeight = if (activeClass != null) FontWeight.Bold else FontWeight.Normal,
 
-                                            color = if (activeClass != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
+                                            color = if (activeClass != null) {
+                                                if (isLight) Color(0xFF0F172A) else Color(0xFFF8FAFC)
+                                            } else {
+                                                if (isLight) MaterialTheme.colorScheme.outline else Color(0xFF94A3B8)
+                                            },
 
                                             maxLines = 1,
 
@@ -418,7 +459,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                 style = MaterialTheme.typography.labelSmall,
 
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = if (isLight) Color(0xFF475569) else Color(0xFFCBD5E1)
 
                                             )
 
@@ -432,7 +473,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                     shape = RoundedCornerShape(6.dp),
 
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                                    color = if (isLight) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f) else Color(0xFF3B82F6).copy(alpha = 0.22f)
 
                                 ) {
 
@@ -442,7 +483,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                         contentDescription = "Ouvrir le menu des classes",
 
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = if (isLight) MaterialTheme.colorScheme.primary else Color(0xFF93C5FD),
 
                                         modifier = Modifier.padding(2.dp).size(20.dp)
 
@@ -625,20 +666,20 @@ fun GradebookScreen(viewModel: AppViewModel) {
                                 shape = RoundedCornerShape(10.dp),
 
                                 color = if (isSelected) {
-
-                                    MaterialTheme.colorScheme.primary
-
+                                    if (isLight) MaterialTheme.colorScheme.primary else Color(0xFF2563EB)
                                 } else {
-
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-
+                                    if (isLight) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f) else Color(0xFF1E293B).copy(alpha = 0.85f)
                                 },
 
                                 border = BorderStroke(
 
                                     width = if (isSelected) 1.5.dp else 1.dp,
 
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+                                    color = if (isSelected) {
+                                        if (isLight) MaterialTheme.colorScheme.primary else Color(0xFF60A5FA)
+                                    } else {
+                                        if (isLight) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f) else Color(0xFF475569)
+                                    }
 
                                 ),
 
@@ -670,7 +711,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                 contentDescription = null,
 
-                                                tint = MaterialTheme.colorScheme.onPrimary,
+                                                tint = Color.White,
 
                                                 modifier = Modifier.size(14.dp)
 
@@ -688,7 +729,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                             fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
 
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                            color = if (isSelected) Color.White else (if (isLight) Color(0xFF1E293B) else Color(0xFFE2E8F0))
 
                                         )
 
@@ -745,44 +786,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
         } else {
 
             item {
-
-                val gradebookPdfLauncher = rememberLauncherForActivityResult(
-
-                    contract = ActivityResultContracts.CreateDocument("application/pdf")
-
-                ) { uri: Uri? ->
-
-                    uri?.let {
-
-                        if (activeClass != null) {
-
-                            viewModel.exportSingleGradebookPdf(
-
-                                context = context,
-
-                                targetUri = it,
-
-                                className = activeClass.name,
-
-                                term = selectedTerm,
-
-                                gradesList = gradesList.sortedWith(
-
-                                    compareBy<StudentWithGrade> { if (it.orderIndex > 0) it.orderIndex else Int.MAX_VALUE }
-
-                                        .thenBy { it.lastName.lowercase() }
-
-                                        .thenBy { it.firstName.lowercase() }
-
-                                )
-
-                            )
-
-                        }
-
-                    }
-
-                }
+                val isLight = MaterialTheme.colorScheme.background == OffWhite || MaterialTheme.colorScheme.background == Color(0xFFF8FAFC)
 
                 Column(
 
@@ -822,13 +826,18 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                     fontWeight = FontWeight.Bold,
 
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = if (isLight) Color(0xFF0F172A) else Color(0xFFF8FAFC)
 
                                 )
 
                                 Surface(
 
-                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    color = if (isLight) Color(0xFFDBEAFE) else Color(0xFF1E3A8A).copy(alpha = 0.85f),
+
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isLight) Color(0xFF93C5FD) else Color(0xFF3B82F6).copy(alpha = 0.65f)
+                                    ),
 
                                     shape = RoundedCornerShape(8.dp)
 
@@ -842,7 +851,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                         fontWeight = FontWeight.Bold,
 
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        color = if (isLight) Color(0xFF1D4ED8) else Color(0xFF93C5FD),
 
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
 
@@ -870,7 +879,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                     modifier = Modifier.size(15.dp),
 
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = if (isLight) Color(0xFF2563EB) else Color(0xFF60A5FA)
 
                                 )
 
@@ -880,7 +889,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                     style = MaterialTheme.typography.bodySmall,
 
-                                    color = MaterialTheme.colorScheme.outline,
+                                    color = if (isLight) Color(0xFF475569) else Color(0xFFCBD5E1),
 
                                     fontWeight = FontWeight.Medium
 
@@ -914,10 +923,15 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                             colors = ButtonDefaults.buttonColors(
 
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                containerColor = if (isLight) Color(0xFFEDE9FE) else Color(0xFF4C1D95).copy(alpha = 0.80f),
 
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                contentColor = if (isLight) Color(0xFF5B21B6) else Color(0xFFDDD6FE)
 
+                            ),
+
+                            border = BorderStroke(
+                                1.dp,
+                                if (isLight) Color(0xFFC4B5FD) else Color(0xFF8B5CF6).copy(alpha = 0.65f)
                             ),
 
                             shape = RoundedCornerShape(10.dp)
@@ -942,10 +956,15 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                             colors = ButtonDefaults.buttonColors(
 
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                containerColor = if (isLight) Color(0xFFD1FAE5) else Color(0xFF065F46).copy(alpha = 0.80f),
 
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                contentColor = if (isLight) Color(0xFF065F46) else Color(0xFFA7F3D0)
 
+                            ),
+
+                            border = BorderStroke(
+                                1.dp,
+                                if (isLight) Color(0xFF6EE7B7) else Color(0xFF10B981).copy(alpha = 0.65f)
                             ),
 
                             shape = RoundedCornerShape(10.dp)
@@ -978,10 +997,15 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                             colors = ButtonDefaults.buttonColors(
 
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                containerColor = if (isLight) Color(0xFFDBEAFE) else Color(0xFF1E3A8A).copy(alpha = 0.85f),
 
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                contentColor = if (isLight) Color(0xFF1E40AF) else Color(0xFFBFDBFE)
 
+                            ),
+
+                            border = BorderStroke(
+                                1.dp,
+                                if (isLight) Color(0xFF93C5FD) else Color(0xFF3B82F6).copy(alpha = 0.70f)
                             ),
 
                             shape = RoundedCornerShape(10.dp)
@@ -1774,7 +1798,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
             text = {
 
-                val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+                val isDark = MaterialTheme.colorScheme.background != OffWhite && MaterialTheme.colorScheme.background != Color(0xFFF8FAFC)
 
                 val isAvgAdmitted = classAverage != null && classAverage >= passingThreshold
 
@@ -2554,13 +2578,20 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                         }
 
+                        val isDarkComp = MaterialTheme.colorScheme.background != OffWhite && MaterialTheme.colorScheme.background != Color(0xFFF8FAFC)
+                        val compPassColor = if (isDarkComp) Color(0xFF34D399) else Color(0xFF137333)
+                        val compFailColor = if (isDarkComp) Color(0xFFF87171) else Color(0xFFC5221F)
+
                         if (dialogTab == 0) {
 
                             Card(
 
                                 modifier = Modifier.fillMaxWidth(),
 
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDarkComp) Color(0xFF1E3A8A).copy(alpha = 0.45f)
+                                    else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                )
 
                             ) {
 
@@ -2574,7 +2605,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                         fontWeight = FontWeight.Bold,
 
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = if (isDarkComp) Color(0xFF93C5FD) else MaterialTheme.colorScheme.primary
 
                                     )
 
@@ -2590,7 +2621,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
 
-                                            Text(if (Tr.isArabic()) "الفصل 1" else "Trimestre 1", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            Text(if (Tr.isArabic()) "الفصل 1" else "Trimestre 1", style = MaterialTheme.typography.labelSmall, color = if (isDarkComp) Color(0xFFCBD5E1) else MaterialTheme.colorScheme.onPrimaryContainer)
 
                                             Text(text = classAvgT1?.let { "%.2f".format(it) } ?: "N/A", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
 
@@ -2598,7 +2629,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
 
-                                            Text(if (Tr.isArabic()) "الفصل 2" else "Trimestre 2", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            Text(if (Tr.isArabic()) "الفصل 2" else "Trimestre 2", style = MaterialTheme.typography.labelSmall, color = if (isDarkComp) Color(0xFFCBD5E1) else MaterialTheme.colorScheme.onPrimaryContainer)
 
                                             Row(verticalAlignment = Alignment.CenterVertically) {
 
@@ -2610,7 +2641,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                     val icon = if (diff >= 0) "↗" else "↘"
 
-                                                    val color = if (diff >= 0) Color(0xFF137333) else Color(0xFFC5221F)
+                                                    val color = if (diff >= 0) compPassColor else compFailColor
 
                                                     Text(" $icon", color = color, fontWeight = FontWeight.Bold, fontSize = 11.sp)
 
@@ -2622,7 +2653,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
 
-                                            Text(if (Tr.isArabic()) "الفصل 3" else "Trimestre 3", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            Text(if (Tr.isArabic()) "الفصل 3" else "Trimestre 3", style = MaterialTheme.typography.labelSmall, color = if (isDarkComp) Color(0xFFCBD5E1) else MaterialTheme.colorScheme.onPrimaryContainer)
 
                                             Row(verticalAlignment = Alignment.CenterVertically) {
 
@@ -2634,7 +2665,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                     val icon = if (diff >= 0) "↗" else "↘"
 
-                                                    val color = if (diff >= 0) Color(0xFF137333) else Color(0xFFC5221F)
+                                                    val color = if (diff >= 0) compPassColor else compFailColor
 
                                                     Text(" $icon", color = color, fontWeight = FontWeight.Bold, fontSize = 11.sp)
 
@@ -2656,7 +2687,10 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                     .fillMaxWidth()
 
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isDarkComp) Color(0xFF1E293B) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        RoundedCornerShape(6.dp)
+                                    )
 
                                     .padding(horizontal = 6.dp, vertical = 6.dp),
 
@@ -2712,7 +2746,11 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                 .fillMaxWidth()
 
-                                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                                .border(
+                                                    1.dp,
+                                                    if (isDarkComp) Color(0xFF334155) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    RoundedCornerShape(6.dp)
+                                                )
 
                                                 .padding(horizontal = 6.dp, vertical = 8.dp),
 
@@ -2750,7 +2788,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                 color = if (t1Avg != null) {
 
-                                                    if (t1Avg >= passingThreshold) Color(0xFF137333) else Color(0xFFC5221F)
+                                                    if (t1Avg >= passingThreshold) compPassColor else compFailColor
 
                                                 } else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -2776,7 +2814,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                     color = if (t2Avg != null) {
 
-                                                        if (t2Avg >= passingThreshold) Color(0xFF137333) else Color(0xFFC5221F)
+                                                        if (t2Avg >= passingThreshold) compPassColor else compFailColor
 
                                                     } else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -2788,7 +2826,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                     val icon = if (diff >= 0) "↗" else "↘"
 
-                                                    val color = if (diff >= 0) Color(0xFF137333) else Color(0xFFC5221F)
+                                                    val color = if (diff >= 0) compPassColor else compFailColor
 
                                                     Text(text = " $icon", color = color, fontWeight = FontWeight.Bold, fontSize = 9.sp)
 
@@ -2816,7 +2854,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                     color = if (t3Avg != null) {
 
-                                                        if (t3Avg >= passingThreshold) Color(0xFF137333) else Color(0xFFC5221F)
+                                                        if (t3Avg >= passingThreshold) compPassColor else compFailColor
 
                                                     } else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -2828,7 +2866,7 @@ fun GradebookScreen(viewModel: AppViewModel) {
 
                                                     val icon = if (diff >= 0) "↗" else "↘"
 
-                                                    val color = if (diff >= 0) Color(0xFF137333) else Color(0xFFC5221F)
+                                                    val color = if (diff >= 0) compPassColor else compFailColor
 
                                                     Text(text = " $icon", color = color, fontWeight = FontWeight.Bold, fontSize = 9.sp)
 
@@ -3037,14 +3075,24 @@ fun GradeItemCard(
     val average = GradeCalculator.computeStudentAverage(grade, subjectCoefficient, isPrimary)
     val averageStr = if (average != null) "%.2f".format(average) else "-"
 
+    val isLight = MaterialTheme.colorScheme.background == OffWhite || MaterialTheme.colorScheme.background == Color(0xFFF8FAFC)
+
     val isPassing = average != null && average >= passingThreshold
     val averageColor = when {
-        average == null -> MaterialTheme.colorScheme.outline
-        isPassing -> Color(0xFF10B981) // Vert émeraude
-        else -> Color(0xFFEF4444) // Rouge corail
+        average == null -> if (isLight) Color(0xFF64748B) else Color(0xFFCBD5E1)
+        isPassing -> if (isLight) Color(0xFF059669) else Color(0xFF34D399)
+        else -> if (isLight) Color(0xFFDC2626) else Color(0xFFF87171)
     }
-
-    val isLight = MaterialTheme.colorScheme.background == OffWhite || MaterialTheme.colorScheme.background == Color(0xFFF8FAFC)
+    val averageBadgeBg = when {
+        average == null -> if (isLight) Color(0xFFF1F5F9) else Color(0xFF334155).copy(alpha = 0.55f)
+        isPassing -> if (isLight) Color(0xFFD1FAE5).copy(alpha = 0.85f) else Color(0xFF065F46).copy(alpha = 0.55f)
+        else -> if (isLight) Color(0xFFFEE2E2).copy(alpha = 0.85f) else Color(0xFF7F1D1D).copy(alpha = 0.55f)
+    }
+    val averageBadgeBorder = when {
+        average == null -> if (isLight) Color(0xFFCBD5E1) else Color(0xFF64748B).copy(alpha = 0.65f)
+        isPassing -> if (isLight) Color(0xFF10B981).copy(alpha = 0.55f) else Color(0xFF34D399).copy(alpha = 0.65f)
+        else -> if (isLight) Color(0xFFEF4444).copy(alpha = 0.55f) else Color(0xFFF87171).copy(alpha = 0.65f)
+    }
 
     // Calcul des composantes pour affichage élégant (Évaluation, Devoir, Compo)
     val evalScore: Float? = if (isPrimary) {
@@ -3068,12 +3116,15 @@ fun GradeItemCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         elevation = 2.dp,
-        borderWidth = 1.1.dp,
-        borderColor = if (average != null && average >= passingThreshold) Color(0xFF10B981).copy(alpha = 0.5f)
-                      else if (average != null) Color(0xFFEF4444).copy(alpha = 0.5f) else null,
+        borderWidth = 1.15.dp,
+        borderColor = when {
+            average != null && average >= passingThreshold -> if (isLight) Color(0xFF10B981).copy(alpha = 0.50f) else Color(0xFF34D399).copy(alpha = 0.55f)
+            average != null -> if (isLight) Color(0xFFEF4444).copy(alpha = 0.50f) else Color(0xFFF87171).copy(alpha = 0.55f)
+            else -> if (isLight) Color(0xFFCBD5E1).copy(alpha = 0.70f) else Color(0xFF475569).copy(alpha = 0.75f)
+        },
         tintColor = if (average != null && average >= passingThreshold) Color(0xFF10B981)
                     else if (average != null) Color(0xFFEF4444) else null,
-        glassAlpha = if (isLight) 0.90f else 0.85f,
+        glassAlpha = if (isLight) 0.92f else 0.88f,
         onClick = onClick
     ) {
         Column(
@@ -3090,11 +3141,12 @@ fun GradeItemCard(
                 // Badge Numéro d'ordre (sans initiales)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isLight) MaterialTheme.colorScheme.primary else Color(0xFF2563EB),
+                    border = if (!isLight) BorderStroke(1.dp, Color(0xFF60A5FA).copy(alpha = 0.55f)) else null
                 ) {
                     Text(
                         text = "$number",
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color.White,
                         fontWeight = FontWeight.Black,
                         fontSize = 12.5.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -3109,7 +3161,7 @@ fun GradeItemCard(
                         text = "${grade.lastName.uppercase()} ${grade.firstName}",
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.5.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = if (isLight) Color(0xFF0F172A) else Color(0xFFF8FAFC),
                         maxLines = 1,
                         softWrap = false,
                         overflow = TextOverflow.Ellipsis
@@ -3118,7 +3170,7 @@ fun GradeItemCard(
                     Text(
                         text = if (isAr) "اضغط للتنقيط" else "Appuyer pour noter",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = if (isLight) Color(0xFF64748B) else Color(0xFF94A3B8),
                         fontSize = 10.5.sp
                     )
                 }
@@ -3128,8 +3180,8 @@ fun GradeItemCard(
                 // Badge Moyenne
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = averageColor.copy(alpha = 0.14f),
-                    border = BorderStroke(1.dp, averageColor.copy(alpha = 0.40f))
+                    color = averageBadgeBg,
+                    border = BorderStroke(1.dp, averageBadgeBorder)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -3166,21 +3218,30 @@ fun GradeItemCard(
                     MiniGradePill(
                         label = if (isAr) "تقويم" else "Éval",
                         value = evalText,
-                        isEntered = evalScore != null
+                        isEntered = evalScore != null,
+                        isLight = isLight,
+                        accentLight = Color(0xFF0284C7),
+                        accentDark = Color(0xFF38BDF8)
                     )
 
                     val devoirText = if (devoirScore != null) "%.1f".format(devoirScore) else "-"
                     MiniGradePill(
                         label = if (isAr) "فرض" else "Devoir",
                         value = devoirText,
-                        isEntered = devoirScore != null
+                        isEntered = devoirScore != null,
+                        isLight = isLight,
+                        accentLight = Color(0xFFD97706),
+                        accentDark = Color(0xFFFBBF24)
                     )
 
                     val compoText = if (compoScore != null) "%.1f".format(compoScore) else "-"
                     MiniGradePill(
                         label = if (isAr) "اختبار" else "Compo",
                         value = compoText,
-                        isEntered = compoScore != null
+                        isEntered = compoScore != null,
+                        isLight = isLight,
+                        accentLight = Color(0xFF7C3AED),
+                        accentDark = Color(0xFFA78BFA)
                     )
                 }
 
@@ -3191,7 +3252,7 @@ fun GradeItemCard(
                             .width(50.dp)
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(if (isLight) Color(0xFFE2E8F0) else Color(0xFF334155))
                     ) {
                         Box(
                             modifier = Modifier
@@ -3205,7 +3266,7 @@ fun GradeItemCard(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                        tint = if (isLight) Color(0xFF94A3B8) else Color(0xFF64748B),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -3218,17 +3279,37 @@ fun GradeItemCard(
 private fun MiniGradePill(
     label: String,
     value: String,
-    isEntered: Boolean
+    isEntered: Boolean,
+    isLight: Boolean = true,
+    accentLight: Color = Color(0xFF2563EB),
+    accentDark: Color = Color(0xFF60A5FA)
 ) {
+    val accent = if (isLight) accentLight else accentDark
+    val bgColor = if (isEntered) {
+        if (isLight) accent.copy(alpha = 0.12f) else accent.copy(alpha = 0.20f)
+    } else {
+        if (isLight) Color(0xFFF1F5F9) else Color(0xFF1E293B).copy(alpha = 0.80f)
+    }
+    val borderColor = if (isEntered) {
+        if (isLight) accent.copy(alpha = 0.40f) else accent.copy(alpha = 0.55f)
+    } else {
+        if (isLight) Color(0xFFCBD5E1).copy(alpha = 0.75f) else Color(0xFF475569).copy(alpha = 0.65f)
+    }
+    val labelColor = if (isEntered) {
+        if (isLight) accent else accent.copy(alpha = 0.95f)
+    } else {
+        if (isLight) Color(0xFF64748B) else Color(0xFF94A3B8)
+    }
+    val valueColor = if (isEntered) {
+        if (isLight) Color(0xFF0F172A) else Color(0xFFF8FAFC)
+    } else {
+        if (isLight) Color(0xFF94A3B8) else Color(0xFFCBD5E1)
+    }
+
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = if (isEntered) MaterialTheme.colorScheme.surfaceVariant
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        border = BorderStroke(
-            0.8.dp,
-            if (isEntered) MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-        )
+        color = bgColor,
+        border = BorderStroke(0.9.dp, borderColor)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
@@ -3238,15 +3319,14 @@ private fun MiniGradePill(
             Text(
                 text = "${label}:",
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.SemiBold,
+                color = labelColor
             )
             Text(
                 text = value,
                 fontSize = 10.5.sp,
-                fontWeight = if (isEntered) FontWeight.Bold else FontWeight.Normal,
-                color = if (isEntered) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.outline
+                fontWeight = if (isEntered) FontWeight.ExtraBold else FontWeight.Medium,
+                color = valueColor
             )
         }
     }
